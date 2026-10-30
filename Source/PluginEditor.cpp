@@ -84,8 +84,8 @@ void HalcyonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
     g.drawLine ({ base, tip }, 2.5f);
 }
 
-HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor& processor)
-    : AudioProcessorEditor (processor)
+HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor& p)
+    : AudioProcessorEditor (p)
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -100,7 +100,7 @@ HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor&
         knob.label.setFont (juce::FontOptions (13.0f, juce::Font::bold));
         addAndMakeVisible (knob.label);
 
-        knob.attachment = std::make_unique<SliderAttachment> (processor.apvts, knobSpecs[i].id, knob.slider);
+        knob.attachment = std::make_unique<SliderAttachment> (p.apvts, knobSpecs[i].id, knob.slider);
     }
 
     setUpChoice (mode, halcyon::params::mode, "MODE", halcyon::params::modeNames);

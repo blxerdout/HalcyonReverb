@@ -23,7 +23,7 @@ Without `JUCE/`, CMake builds only the engine and tests. `COPY_PLUGIN_AFTER_BUIL
 
 ## Status and next steps
 
-1. JUCE isn't downloaded yet. Next step: `git submodule add https://github.com/juce-framework/JUCE.git JUCE`, check out the latest 8.x tag, then build and fix any compile errors in the wrapper/editor (they have never been compiled)
+1. JUCE is a submodule pinned to tag `8.0.16-security` (official security patch on top of 8.0.15). Plugin builds warning-free as a universal binary, `auval -v aufx Hlcy Cspx` passes, and the standalone app launches. Not yet tested in a DAW
 2. Not pushed to GitHub yet: no remote, and no gh CLI or SSH keys on this Mac. The user intends to publish through VS Code's Source Control → Publish Branch
 3. Test in the user's DAWs: Ableton Live 12, FL Studio. Pro Tools would need AAX (Avid SDK), which is out of scope for now
 
