@@ -1,0 +1,12 @@
+{
+  "cmake.cmakePath": "${userHome}/Library/Python/3.14/bin/cmake",
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": true,
+  "cmake.environment": {
+    "PATH": "${userHome}/Library/Python/3.14/bin:${env:PATH}"
+  },
+  "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build/release"],
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "files.exclude": { "build": true },
+  "search.exclude": { "JUCE": true, "build": true }
+}

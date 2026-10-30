@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Standalone (debug)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/HalcyonReverb_artefacts/Debug/Standalone/Halcyon Reverb.app/Contents/MacOS/Halcyon Reverb",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Engine tests",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/debug/engine_tests",
+      "args": ["${workspaceFolder}/build"],
+      "preLaunchTask": "CMake: build"
+    }
+  ]
+}
