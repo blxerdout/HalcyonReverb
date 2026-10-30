@@ -22,6 +22,7 @@ HalcyonAudioProcessor::HalcyonAudioProcessor()
     raw.width = apvts.getRawParameterValue (p::width);
     raw.mode = apvts.getRawParameterValue (p::mode);
     raw.color = apvts.getRawParameterValue (p::color);
+    raw.lofi = apvts.getRawParameterValue (p::lofi);
 }
 
 halcyon::ReverbParams HalcyonAudioProcessor::readParams() const
@@ -39,6 +40,7 @@ halcyon::ReverbParams HalcyonAudioProcessor::readParams() const
     r.width = raw.width->load();
     r.mode = (halcyon::Mode) juce::jlimit (0, p::modeNames.size() - 1, (int) raw.mode->load());
     r.color = (halcyon::Color) juce::jlimit (0, p::colorNames.size() - 1, (int) raw.color->load());
+    r.lofi = raw.lofi->load() >= 0.5f;
     return r;
 }
 

@@ -18,6 +18,7 @@ inline constexpr const char* lowCut = "lowcut";
 inline constexpr const char* width = "width";
 inline constexpr const char* mode = "mode";
 inline constexpr const char* color = "color";
+inline constexpr const char* lofi = "lofi";
 
 inline const juce::StringArray modeNames { "Plate", "Hall", "Room", "Chamber", "Cathedral" };
 inline const juce::StringArray colorNames { "Modern", "Vintage", "Dark" };

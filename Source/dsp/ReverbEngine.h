@@ -11,7 +11,9 @@
 //
 // Early reflections are a tapped delay line fed from the pre-delayed input.
 // Each Mode supplies its own delay-length set, density and reflection level;
-// each Color shapes bandwidth, modulation and in-loop saturation.
+// each Color shapes bandwidth, modulation and in-loop saturation. Lofi runs
+// the wet signal through a band-pass, fuzz, sample-and-hold and 8-bit
+// quantiser, crossfaded in so toggling it doesn't click.
 
 #include <array>
 #include <cmath>
@@ -51,6 +53,7 @@ struct ReverbParams
     float width = 1.0f;         // 0 = mono wet, 1 = full stereo
     Mode mode = Mode::Hall;
     Color color = Color::Modern;
+    bool lofi = false;
 };
 
 namespace detail
@@ -149,6 +152,52 @@ struct OnePoleHighpass
     float process (float x) { return x - lp.process (x); }
 };
 
+// Band-pass -> fuzz -> sample-and-hold -> 8-bit quantise -> smoothing low-pass.
+class LofiStage
+{
+public:
+    void prepare (float sampleRate)
+    {
+        highpass.setCutoff (300.0f, sampleRate);
+        bandLimit1.setCutoff (3200.0f, sampleRate);
+        bandLimit2.setCutoff (3200.0f, sampleRate);
+        smoothing.setCutoff (5500.0f, sampleRate);
+        holdInc = 11025.0f / sampleRate;
+        clear();
+    }
+
+    void clear()
+    {
+        highpass.lp.z = bandLimit1.z = bandLimit2.z = smoothing.z = 0.0f;
+        holdPhase = 1.0f; // take a fresh sample on the first call
+        held = 0.0f;
+    }
+
+    float process (float x)
+    {
+        x = bandLimit2.process (bandLimit1.process (highpass.process (x)));
+
+        const float driven = 6.0f * x;
+        x = driven / (1.0f + std::abs (driven));
+
+        holdPhase += holdInc;
+        if (holdPhase >= 1.0f)
+        {
+            holdPhase -= 1.0f;
+            held = std::round (x * 127.0f) / 127.0f;
+        }
+
+        return 0.5f * smoothing.process (held);
+    }
+
+private:
+    OnePoleHighpass highpass;
+    OnePoleLowpass bandLimit1, bandLimit2, smoothing;
+    float holdInc = 0.25f;
+    float holdPhase = 1.0f;
+    float held = 0.0f;
+};
+
 } // namespace detail
 
 class ReverbEngine
@@ -182,6 +231,7 @@ private:
     float mix = 0.35f, mixTarget = 0.35f;
     float width = 1.0f, widthTarget = 1.0f;
     float erLevel = 0.0f, erLevelTarget = 0.0f;
+    float lofiAmount = 0.0f, lofiTarget = 0.0f;
 
     // Non-smoothed settings.
     float inputDiffGain = 0.6f;
@@ -199,6 +249,7 @@ private:
     std::array<detail::DelayLine, numLines> lines;
     std::array<detail::Allpass, numLines> tankAp;
     std::array<detail::OnePoleLowpass, numLines> damping;
+    detail::LofiStage lofiL, lofiR;
 };
 
 } // namespace halcyon

@@ -125,6 +125,9 @@ void ReverbEngine::prepare (double sampleRate)
         lfoPhase[(size_t) i] = (float) i / (float) numLines;
     }
 
+    lofiL.prepare (fs);
+    lofiR.prepare (fs);
+
     reset();
 }
 
@@ -142,6 +145,8 @@ void ReverbEngine::reset()
     for (auto& l : lines) l.clear();
     for (auto& a : tankAp) a.clear();
     for (auto& d : damping) d.z = 0.0f;
+    lofiL.clear();
+    lofiR.clear();
 
     // Jump straight to targets so a fresh instance doesn't glide in.
     lineLen = lineLenTarget;
@@ -154,6 +159,7 @@ void ReverbEngine::reset()
     mix = mixTarget;
     width = widthTarget;
     erLevel = erLevelTarget;
+    lofiAmount = lofiTarget;
     updateLoopGains();
 }
 
@@ -184,6 +190,7 @@ void ReverbEngine::setParams (const ReverbParams& p)
     mixTarget = std::clamp (p.mix, 0.0f, 1.0f);
     widthTarget = std::clamp (p.width, 0.0f, 1.0f);
     erLevelTarget = mode.erLevel;
+    lofiTarget = p.lofi ? 1.0f : 0.0f;
 
     const float diffusion = std::clamp (p.diffusion, 0.0f, 1.0f);
     inputDiffGain = 0.75f * diffusion * mode.diffScale;
@@ -237,6 +244,7 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
         glide (mix, mixTarget);
         glide (width, widthTarget);
         glide (erLevel, erLevelTarget);
+        glide (lofiAmount, lofiTarget);
 
         if (controlCounter++ % controlInterval == 0)
             updateLoopGains();
@@ -297,6 +305,12 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
 
         float wetL = outputGain * (lateL * 0.35355339f + erLevel * erL);
         float wetR = outputGain * (lateR * 0.35355339f + erLevel * erR);
+
+        if (lofiAmount > 1.0e-4f)
+        {
+            wetL += lofiAmount * (lofiL.process (wetL) - wetL);
+            wetR += lofiAmount * (lofiR.process (wetR) - wetR);
+        }
 
         // Width via mid/side.
         const float mid = 0.5f * (wetL + wetR);

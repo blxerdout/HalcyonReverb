@@ -35,7 +35,9 @@ constexpr std::array<KnobSpec, 10> knobSpecs {{
 }};
 
 constexpr int headerHeight = 64;
+constexpr int presetBarHeight = 44;
 constexpr int margin = 20;
+constexpr int userPresetIdOffset = 1000;
 
 } // namespace
 
@@ -52,6 +54,17 @@ HalcyonLookAndFeel::HalcyonLookAndFeel()
     setColour (juce::PopupMenu::textColourId, colours::text);
     setColour (juce::PopupMenu::highlightedBackgroundColourId, colours::accent.withAlpha (0.25f));
     setColour (juce::PopupMenu::highlightedTextColourId, colours::text);
+    setColour (juce::TextButton::buttonColourId, colours::track);
+    setColour (juce::TextButton::buttonOnColourId, colours::accent);
+    setColour (juce::TextButton::textColourOffId, colours::text);
+    setColour (juce::TextButton::textColourOnId, colours::background);
+    setColour (juce::AlertWindow::backgroundColourId, colours::panel);
+    setColour (juce::AlertWindow::textColourId, colours::text);
+    setColour (juce::AlertWindow::outlineColourId, colours::accent);
+    setColour (juce::TextEditor::backgroundColourId, colours::track);
+    setColour (juce::TextEditor::textColourId, colours::text);
+    setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::TextEditor::focusedOutlineColourId, colours::accent);
 }
 
 void HalcyonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
@@ -85,7 +98,7 @@ void HalcyonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int 
 }
 
 HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor& p)
-    : AudioProcessorEditor (p)
+    : AudioProcessorEditor (p), audioProcessor (p)
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -106,12 +119,168 @@ HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor&
     setUpChoice (mode, halcyon::params::mode, "MODE", halcyon::params::modeNames);
     setUpChoice (color, halcyon::params::color, "COLOR", halcyon::params::colorNames);
 
-    setSize (640, 420);
+    presetBox.setTextWhenNothingSelected ("Default");
+    presetBox.onChange = [this] { loadPresetById (presetBox.getSelectedId()); };
+    addAndMakeVisible (presetBox);
+
+    prevButton.onClick = [this] { stepPreset (-1); };
+    nextButton.onClick = [this] { stepPreset (1); };
+    saveButton.onClick = [this] { savePreset(); };
+    deleteButton.onClick = [this] { deletePreset(); };
+    for (auto* button : { &prevButton, &nextButton, &saveButton, &deleteButton })
+        addAndMakeVisible (button);
+
+    lofiButton.setClickingTogglesState (true);
+    lofiButton.setTooltip ("Filtered, fuzzy 8-bit version of the current reverb");
+    addAndMakeVisible (lofiButton);
+    lofiAttachment = std::make_unique<ButtonAttachment> (p.apvts, halcyon::params::lofi, lofiButton);
+
+    refreshPresetList();
+
+    setSize (640, 470);
 }
 
 HalcyonAudioProcessorEditor::~HalcyonAudioProcessorEditor()
 {
+    dialog.reset();
     setLookAndFeel (nullptr);
+}
+
+void HalcyonAudioProcessorEditor::refreshPresetList()
+{
+    presetBox.clear (juce::dontSendNotification);
+    presetOrder.clear();
+    userPresets = audioProcessor.presets.getUserPresets();
+
+    auto* menu = presetBox.getRootMenu();
+    for (int m = 0; m < halcyon::params::modeNames.size(); ++m)
+    {
+        juce::PopupMenu category;
+        for (int i = m * halcyon::presetsPerMode; i < (m + 1) * halcyon::presetsPerMode; ++i)
+        {
+            category.addItem (i + 1, halcyon::factoryPresets[(size_t) i].name);
+            presetOrder.push_back (i + 1);
+        }
+        menu->addSubMenu (halcyon::params::modeNames[m], category);
+    }
+
+    if (! userPresets.isEmpty())
+    {
+        menu->addSectionHeader ("User");
+        for (int i = 0; i < userPresets.size(); ++i)
+        {
+            menu->addItem (userPresetIdOffset + i + 1, userPresets[i].getFileNameWithoutExtension());
+            presetOrder.push_back (userPresetIdOffset + i + 1);
+        }
+    }
+
+    // Show the current name, preferring a user preset when names clash.
+    const auto current = audioProcessor.presets.getCurrentPresetName();
+    int selected = 0;
+    for (int id : presetOrder)
+        if (presetBox.getItemText (presetBox.indexOfItemId (id)) == current)
+            selected = id;
+
+    if (selected != 0)
+        presetBox.setSelectedId (selected, juce::dontSendNotification);
+    else
+        presetBox.setText (current, juce::dontSendNotification);
+
+    deleteButton.setEnabled (selected > userPresetIdOffset);
+}
+
+void HalcyonAudioProcessorEditor::loadPresetById (int id)
+{
+    if (id > userPresetIdOffset)
+    {
+        const int index = id - userPresetIdOffset - 1;
+        if (juce::isPositiveAndBelow (index, userPresets.size()))
+            audioProcessor.presets.loadUser (userPresets[index]);
+    }
+    else if (id > 0)
+    {
+        audioProcessor.presets.loadFactory (id - 1);
+    }
+
+    deleteButton.setEnabled (id > userPresetIdOffset);
+}
+
+void HalcyonAudioProcessorEditor::stepPreset (int delta)
+{
+    if (presetOrder.empty())
+        return;
+
+    const auto it = std::find (presetOrder.begin(), presetOrder.end(), presetBox.getSelectedId());
+    const int count = (int) presetOrder.size();
+    const int pos = it == presetOrder.end() ? (delta > 0 ? -1 : 0) : (int) (it - presetOrder.begin());
+    presetBox.setSelectedId (presetOrder[(size_t) ((pos + delta + count) % count)]);
+}
+
+void HalcyonAudioProcessorEditor::savePreset()
+{
+    const auto current = presetBox.getSelectedId() > userPresetIdOffset ? presetBox.getText() : juce::String();
+    showDialog ("Save Preset", "Name this preset:", "Save", true, [this] (const juce::String& name)
+    {
+        if (audioProcessor.presets.saveUser (name))
+            refreshPresetList();
+        else
+            showDialog ("Save Preset", "Couldn't save \"" + name + "\".", "OK", false, nullptr);
+    });
+
+    if (dialog != nullptr)
+        dialog->getTextEditor ("name")->setText (current);
+}
+
+void HalcyonAudioProcessorEditor::deletePreset()
+{
+    const int index = presetBox.getSelectedId() - userPresetIdOffset - 1;
+    if (! juce::isPositiveAndBelow (index, userPresets.size()))
+        return;
+
+    const auto file = userPresets[index];
+    showDialog ("Delete Preset", "Delete \"" + file.getFileNameWithoutExtension() + "\"?", "Delete", false,
+                [this, file] (const juce::String&)
+                {
+                    audioProcessor.presets.deleteUser (file);
+                    refreshPresetList();
+                });
+}
+
+void HalcyonAudioProcessorEditor::showDialog (const juce::String& title, const juce::String& message,
+                                              const juce::String& confirmText, bool withNameField,
+                                              std::function<void (const juce::String&)> onConfirm)
+{
+    // A child of the editor rather than a desktop window, so it can't end up behind the host.
+    dialog = std::make_unique<juce::AlertWindow> (title, message, juce::MessageBoxIconType::NoIcon);
+    if (withNameField)
+        dialog->addTextEditor ("name", {});
+    dialog->addButton (confirmText, 1, juce::KeyPress (juce::KeyPress::returnKey));
+    if (onConfirm != nullptr)
+        dialog->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    addAndMakeVisible (*dialog);
+    dialog->setCentrePosition (getLocalBounds().getCentre());
+
+    juce::Component::SafePointer<HalcyonAudioProcessorEditor> safeThis (this);
+    dialog->enterModalState (true, juce::ModalCallbackFunction::create ([safeThis, withNameField, onConfirm] (int result)
+    {
+        if (safeThis == nullptr)
+            return;
+
+        const auto name = withNameField ? safeThis->dialog->getTextEditorContents ("name") : juce::String();
+
+        // The modal manager is still using the window, so delete it afterwards.
+        juce::MessageManager::callAsync ([safeThis, window = safeThis->dialog.release()]
+        {
+            delete window;
+        });
+
+        if (result == 1 && onConfirm != nullptr)
+            onConfirm (name);
+    }), false);
+
+    if (withNameField)
+        dialog->getTextEditor ("name")->grabKeyboardFocus();
 }
 
 void HalcyonAudioProcessorEditor::setUpChoice (Choice& choice, const char* paramId, const juce::String& name,
@@ -127,7 +296,7 @@ void HalcyonAudioProcessorEditor::setUpChoice (Choice& choice, const char* param
     addAndMakeVisible (choice.label);
 
     choice.attachment = std::make_unique<ComboBoxAttachment> (
-        dynamic_cast<HalcyonAudioProcessor&> (processor).apvts, paramId, choice.box);
+        audioProcessor.apvts, paramId, choice.box);
 }
 
 void HalcyonAudioProcessorEditor::paint (juce::Graphics& g)
@@ -143,7 +312,7 @@ void HalcyonAudioProcessorEditor::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (12.0f));
     g.drawText ("REVERB", header.withTrimmedLeft (124), juce::Justification::centredLeft);
 
-    auto body = getLocalBounds().withTrimmedTop (headerHeight).reduced (margin, 0).withTrimmedBottom (margin);
+    auto body = getLocalBounds().withTrimmedTop (headerHeight + presetBarHeight).reduced (margin, 0).withTrimmedBottom (margin);
     g.setColour (colours::panel);
     g.fillRoundedRectangle (body.toFloat(), 10.0f);
 }
@@ -160,7 +329,24 @@ void HalcyonAudioProcessorEditor::resized()
     placeChoice (color);
     placeChoice (mode);
 
-    auto body = getLocalBounds().withTrimmedTop (headerHeight).reduced (margin, 0).withTrimmedBottom (margin).reduced (10);
+    auto bar = getLocalBounds().withTrimmedTop (headerHeight).removeFromTop (presetBarHeight).reduced (margin, 0)
+                   .withTrimmedBottom (12);
+    lofiButton.setBounds (bar.removeFromRight (80));
+    bar.removeFromRight (24);
+    prevButton.setBounds (bar.removeFromLeft (32));
+    bar.removeFromLeft (4);
+    nextButton.setBounds (bar.removeFromLeft (32));
+    bar.removeFromLeft (8);
+    deleteButton.setBounds (bar.removeFromRight (64));
+    bar.removeFromRight (6);
+    saveButton.setBounds (bar.removeFromRight (64));
+    bar.removeFromRight (8);
+    presetBox.setBounds (bar);
+
+    if (dialog != nullptr)
+        dialog->setCentrePosition (getLocalBounds().getCentre());
+
+    auto body = getLocalBounds().withTrimmedTop (headerHeight + presetBarHeight).reduced (margin, 0).withTrimmedBottom (margin).reduced (10);
     const int rowHeight = body.getHeight() / 2;
     const int columns = 5;
 

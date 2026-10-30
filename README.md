@@ -18,6 +18,15 @@ modes with distinct character, plus a colour control that shapes bandwidth, moti
 | Low Cut / High Cut | Input high-pass, and damping inside the tank (darker tails at lower settings) |
 | Mod Rate / Mod Depth | Delay-line modulation for chorus-like movement and to break up metallic ringing |
 | Width | Stereo width of the wet signal |
+| **Lofi** | Turns the wet signal into a filtered, fuzzy 8-bit version of the current reverb (band-pass, fuzz, ~11 kHz sample-and-hold, 8-bit quantise). Crossfades in, so it can be automated |
+
+## Presets
+
+The preset bar holds 50 factory presets, ten per Mode, running from everyday settings
+to experimental ones (lofi, extreme modulation, metallic resonators, frozen tails).
+The arrows step through every preset; **Save** stores the current settings as a user preset and
+**Delete** removes the selected user preset. User presets are XML files in
+`~/Library/Audio/Presets/creativespxce/Halcyon Reverb`, so they can be backed up or shared.
 
 ## How it works
 
@@ -30,10 +39,11 @@ modes with distinct character, plus a colour control that shapes bandwidth, moti
    modulated, cubic-interpolated read, a damping lowpass and an in-loop allpass.
    The feedback gains are derived from the Decay setting so every line reaches
    −60 dB at the same time.
-5. Orthogonal output taps for decorrelated left/right, then width and mix
+5. Orthogonal output taps for decorrelated left/right, an optional Lofi stage, then width and mix
 
-The JUCE layer (`PluginProcessor`, `PluginEditor`, `Parameters`) only maps parameters
-and draws the UI.
+Factory presets live in `Source/dsp/FactoryPresets.h`, also JUCE-free, so the tests render
+every one. The JUCE layer (`PluginProcessor`, `PluginEditor`, `Parameters`, `PresetManager`)
+maps parameters, handles preset files and draws the UI.
 
 ## Building
 
@@ -54,7 +64,7 @@ in the CMake panel and press Build.
 ## Tests
 
 The engine tests build without JUCE. They check stability, measured RT60 against the
-Decay setting, stereo decorrelation and CPU use:
+Decay setting, stereo decorrelation, Lofi behaviour, every factory preset and CPU use:
 
 ```bash
 ctest --preset release

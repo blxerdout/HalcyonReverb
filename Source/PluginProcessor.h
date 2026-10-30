@@ -1,5 +1,6 @@
 #pragma once
 
+#include "PresetManager.h"
 #include "dsp/ReverbEngine.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -35,6 +36,7 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState apvts;
+    halcyon::PresetManager presets { apvts };
 
 private:
     halcyon::ReverbParams readParams() const;
@@ -55,6 +57,7 @@ private:
         std::atomic<float>* width = nullptr;
         std::atomic<float>* mode = nullptr;
         std::atomic<float>* color = nullptr;
+        std::atomic<float>* lofi = nullptr;
     } raw;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalcyonAudioProcessor)

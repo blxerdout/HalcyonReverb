@@ -26,6 +26,7 @@ public:
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
     struct Knob
     {
@@ -43,9 +44,28 @@ private:
 
     void setUpChoice (Choice&, const char* paramId, const juce::String& name, const juce::StringArray& items);
 
+    void refreshPresetList();
+    void loadPresetById (int id);
+    void stepPreset (int delta);
+    void savePreset();
+    void deletePreset();
+    void showDialog (const juce::String& title, const juce::String& message, const juce::String& confirmText,
+                     bool withNameField, std::function<void (const juce::String&)> onConfirm);
+
+    HalcyonAudioProcessor& audioProcessor;
     HalcyonLookAndFeel lookAndFeel;
     std::array<Knob, 10> knobs;
     Choice mode, color;
+
+    juce::ComboBox presetBox;
+    juce::TextButton prevButton { "<" }, nextButton { ">" }, saveButton { "Save" }, deleteButton { "Delete" };
+    juce::Array<juce::File> userPresets;
+    std::vector<int> presetOrder; // combo IDs in menu order, for the arrows
+
+    juce::TextButton lofiButton { "LOFI" };
+    std::unique_ptr<ButtonAttachment> lofiAttachment;
+
+    std::unique_ptr<juce::AlertWindow> dialog;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalcyonAudioProcessorEditor)
 };

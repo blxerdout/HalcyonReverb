@@ -51,6 +51,7 @@ juce_add_plugin(HalcyonReverb
 
 target_sources(HalcyonReverb PRIVATE
     Source/Parameters.cpp
+    Source/PresetManager.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp)
 

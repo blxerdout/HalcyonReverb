@@ -2,6 +2,7 @@
 //   clang++ -std=c++17 -O2 -I Source tests/EngineTests.cpp Source/dsp/ReverbEngine.cpp -o engine_tests
 // Pass a directory as the first argument to also write impulse responses as WAV files.
 
+#include "dsp/FactoryPresets.h"
 #include "dsp/ReverbEngine.h"
 
 #include <chrono>
@@ -255,6 +256,70 @@ int main (int argc, char** argv)
                 finite = finite && std::isfinite (l[(size_t) i]) && std::isfinite (r[(size_t) i]);
         }
         check (finite, "size, pre-delay and mode sweeps stay finite");
+    }
+
+    std::printf ("\nLofi\n");
+    {
+        ReverbParams p;
+        p.mix = 1.0f;
+        p.mode = Mode::Hall;
+        const Stereo clean = render (p, impulse(), 2 * 48000);
+        p.lofi = true;
+        const Stereo crushed = render (p, impulse(), 2 * 48000);
+
+        float peak = 0.0f;
+        const bool finite = allFinite (crushed, peak);
+        double diff = 0.0, energy = 0.0;
+        for (size_t i = 0; i < clean.l.size(); ++i)
+        {
+            diff += std::pow (crushed.l[i] - clean.l[i], 2.0);
+            energy += std::pow (clean.l[i], 2.0);
+        }
+        check (finite && peak < 1.5f, "finite and bounded");
+        check (diff > 0.1 * energy, "audibly changes the wet signal");
+
+        // Toggling mid-stream crossfades rather than jumping.
+        ReverbEngine engine;
+        engine.prepare (sampleRate);
+        p.lofi = false;
+        engine.setParams (p);
+        engine.reset();
+        std::vector<float> l (4800, 0.2f), r (4800, 0.2f);
+        engine.process (l.data(), r.data(), 4800);
+        p.lofi = true;
+        engine.setParams (p);
+        std::vector<float> l2 (2, 0.2f), r2 (2, 0.2f);
+        engine.process (l2.data(), r2.data(), 2);
+        check (std::abs (l2[0] - l.back()) < 0.05f, "switching on does not click");
+    }
+
+    std::printf ("\nFactory presets (loud noise, then tail)\n");
+    {
+        int unstable = 0, misfiled = 0;
+        std::mt19937 rng (7);
+        std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+        Stereo noise;
+        for (int i = 0; i < 48000; ++i)
+        {
+            noise.l.push_back (dist (rng));
+            noise.r.push_back (dist (rng));
+        }
+
+        for (size_t i = 0; i < factoryPresets.size(); ++i)
+        {
+            const auto& preset = factoryPresets[i];
+            if ((int) preset.params.mode != (int) i / presetsPerMode)
+                ++misfiled;
+
+            float peak = 0.0f;
+            if (! allFinite (render (preset.params, noise, 4 * 48000), peak) || peak > 20.0f)
+            {
+                std::printf ("  %s: peak %.2f\n", preset.name, peak);
+                ++unstable;
+            }
+        }
+        check (misfiled == 0, "each preset sits in its Mode's group of ten");
+        check (unstable == 0, std::to_string (factoryPresets.size()) + " presets finite and bounded");
     }
 
     std::printf ("\nCPU\n");
