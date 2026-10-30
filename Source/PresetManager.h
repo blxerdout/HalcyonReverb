@@ -8,7 +8,7 @@ namespace halcyon
 {
 
 // Factory presets come from FactoryPresets.h; user presets are XML files in
-// ~/Library/Audio/Presets/creativespxce/Halcyon Reverb. Must be used from the
+// ~/Library/Audio/Presets/creativespxce/Reblxerd. Must be used from the
 // message thread.
 class PresetManager
 {

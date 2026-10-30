@@ -1,18 +1,11 @@
 #include "PluginEditor.h"
 #include "Parameters.h"
+#include "Theme.h"
+
+using namespace theme;
 
 namespace
 {
-
-namespace colours
-{
-const juce::Colour background { 0xff15171c };
-const juce::Colour panel { 0xff1e2128 };
-const juce::Colour track { 0xff2c313b };
-const juce::Colour accent { 0xffe3a45a };
-const juce::Colour text { 0xffd9dce2 };
-const juce::Colour dimText { 0xff8a909c };
-} // namespace colours
 
 struct KnobSpec
 {
@@ -34,83 +27,231 @@ constexpr std::array<KnobSpec, 10> knobSpecs {{
     { halcyon::params::width, "Width" },
 }};
 
-constexpr int headerHeight = 64;
+constexpr int headerHeight = 70;
 constexpr int presetBarHeight = 44;
+constexpr int tabBarHeight = 30;
+constexpr int footerHeight = 26;
 constexpr int margin = 20;
 constexpr int userPresetIdOffset = 1000;
 
 } // namespace
 
-HalcyonLookAndFeel::HalcyonLookAndFeel()
+//==============================================================================
+NeonKnob::NeonKnob()
+    : juce::Slider (RotaryHorizontalVerticalDrag, TextBoxBelow)
 {
-    setColour (juce::Slider::textBoxTextColourId, colours::text);
-    setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    setColour (juce::Label::textColourId, colours::dimText);
-    setColour (juce::ComboBox::backgroundColourId, colours::track);
-    setColour (juce::ComboBox::textColourId, colours::text);
-    setColour (juce::ComboBox::outlineColourId, juce::Colours::transparentBlack);
-    setColour (juce::ComboBox::arrowColourId, colours::accent);
-    setColour (juce::PopupMenu::backgroundColourId, colours::panel);
-    setColour (juce::PopupMenu::textColourId, colours::text);
-    setColour (juce::PopupMenu::highlightedBackgroundColourId, colours::accent.withAlpha (0.25f));
-    setColour (juce::PopupMenu::highlightedTextColourId, colours::text);
-    setColour (juce::TextButton::buttonColourId, colours::track);
-    setColour (juce::TextButton::buttonOnColourId, colours::accent);
-    setColour (juce::TextButton::textColourOffId, colours::text);
-    setColour (juce::TextButton::textColourOnId, colours::background);
-    setColour (juce::AlertWindow::backgroundColourId, colours::panel);
-    setColour (juce::AlertWindow::textColourId, colours::text);
-    setColour (juce::AlertWindow::outlineColourId, colours::accent);
-    setColour (juce::TextEditor::backgroundColourId, colours::track);
-    setColour (juce::TextEditor::textColourId, colours::text);
-    setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
-    setColour (juce::TextEditor::focusedOutlineColourId, colours::accent);
 }
 
-void HalcyonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
-                                           float startAngle, float endAngle, juce::Slider&)
+void NeonKnob::valueChanged()
 {
-    const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (6.0f);
+    holdFrames = 8; // keep lit between the steps of a slow drag
+    wake();
+}
+
+void NeonKnob::mouseDown (const juce::MouseEvent& e)
+{
+    juce::Slider::mouseDown (e);
+    wake();
+}
+
+void NeonKnob::wake()
+{
+    if (! isTimerRunning())
+        startTimerHz (60);
+}
+
+void NeonKnob::timerCallback()
+{
+    const bool active = isMouseButtonDown() || holdFrames > 0;
+    if (holdFrames > 0)
+        --holdFrames;
+
+    if (active)
+        glow += 0.35f * (1.0f - glow);
+    else
+        glow *= 0.93f;
+
+    if (! active && glow < 0.005f)
+    {
+        glow = 0.0f;
+        stopTimer();
+    }
+
+    repaint();
+}
+
+//==============================================================================
+NeonLookAndFeel::NeonLookAndFeel()
+{
+    setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::Label::textColourId, colours::dimText);
+    setColour (juce::ComboBox::backgroundColourId, colours::panel);
+    setColour (juce::ComboBox::textColourId, colours::text);
+    setColour (juce::ComboBox::outlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::ComboBox::arrowColourId, colours::cyan);
+    setColour (juce::PopupMenu::backgroundColourId, colours::panel);
+    setColour (juce::PopupMenu::textColourId, colours::text);
+    setColour (juce::PopupMenu::headerTextColourId, colours::magenta);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, colours::cyan.withAlpha (0.2f));
+    setColour (juce::PopupMenu::highlightedTextColourId, colours::cyan);
+    setColour (juce::TextButton::textColourOffId, colours::text);
+    setColour (juce::TextButton::textColourOnId, juce::Colours::white);
+    setColour (juce::AlertWindow::backgroundColourId, colours::panel);
+    setColour (juce::AlertWindow::textColourId, colours::text);
+    setColour (juce::AlertWindow::outlineColourId, colours::magenta);
+    setColour (juce::TextEditor::backgroundColourId, colours::track);
+    setColour (juce::TextEditor::textColourId, colours::text);
+    setColour (juce::TextEditor::highlightColourId, colours::cyan.withAlpha (0.3f));
+    setColour (juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::TextEditor::focusedOutlineColourId, colours::cyan);
+    setColour (juce::CaretComponent::caretColourId, colours::cyan);
+}
+
+void NeonLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
+                                        float startAngle, float endAngle, juce::Slider& slider)
+{
+    const auto* knob = dynamic_cast<NeonKnob*> (&slider);
+    const float glow = knob != nullptr ? knob->getGlow() : 0.0f;
+    const auto neon = knob != nullptr ? knob->colour : colours::cyan;
+
+    // Leave room for the bloom, which spreads past the arc.
+    const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (10.0f);
     const float radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) / 2.0f;
     const auto centre = bounds.getCentre();
     const float angle = startAngle + sliderPos * (endAngle - startAngle);
-    const float stroke = 3.5f;
-    const float arcRadius = radius - stroke;
+    const float arcRadius = radius - 3.0f;
 
-    juce::Path background;
-    background.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, startAngle, endAngle, true);
+    juce::Path track;
+    track.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, startAngle, endAngle, true);
     g.setColour (colours::track);
-    g.strokePath (background, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath (track, juce::PathStrokeType (3.0f));
 
     juce::Path value;
     value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, startAngle, angle, true);
-    g.setColour (colours::accent);
-    g.strokePath (value, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    strokeGlow (g, value, neon, 0.3f + 1.2f * glow);
 
-    const float bodyRadius = arcRadius - 7.0f;
-    g.setColour (colours::panel.brighter (0.15f));
-    g.fillEllipse (centre.x - bodyRadius, centre.y - bodyRadius, bodyRadius * 2.0f, bodyRadius * 2.0f);
+    // The arc itself is segmented like an LED meter.
+    juce::Path segments;
+    const float dashes[] { 4.0f, 2.5f };
+    juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::butt)
+        .createDashedStroke (segments, value, dashes, 2);
+    g.setColour (neon.interpolatedWith (juce::Colours::white, 0.45f * glow));
+    g.fillPath (segments);
 
-    const auto tip = centre.getPointOnCircumference (bodyRadius * 0.8f, angle);
-    const auto base = centre.getPointOnCircumference (bodyRadius * 0.25f, angle);
-    g.setColour (colours::text);
-    g.drawLine ({ base, tip }, 2.5f);
+    // Body: dark disc with a faint neon rim that brightens while turning.
+    const float bodyRadius = arcRadius - 9.0f;
+    const auto body = juce::Rectangle<float> (bodyRadius * 2.0f, bodyRadius * 2.0f).withCentre (centre);
+    g.setGradientFill (juce::ColourGradient (colours::track.brighter (0.15f), centre.x, body.getY(),
+                                             colours::panel, centre.x, body.getBottom(), false));
+    g.fillEllipse (body);
+    g.setColour (neon.withAlpha (0.2f + 0.5f * glow));
+    g.drawEllipse (body, 1.0f);
+
+    juce::Path pointer;
+    pointer.startNewSubPath (centre.getPointOnCircumference (bodyRadius * 0.3f, angle));
+    pointer.lineTo (centre.getPointOnCircumference (bodyRadius * 0.85f, angle));
+    strokeGlow (g, pointer, neon, 0.2f + 1.1f * glow);
+    g.setColour (neon.interpolatedWith (juce::Colours::white, 0.3f + 0.5f * glow));
+    g.strokePath (pointer, juce::PathStrokeType (2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
+juce::Label* NeonLookAndFeel::createSliderTextBox (juce::Slider& slider)
+{
+    auto* label = LookAndFeel_V4::createSliderTextBox (slider);
+    const auto* knob = dynamic_cast<NeonKnob*> (&slider);
+    const auto neon = knob != nullptr ? knob->colour : colours::cyan;
+
+    label->setFont (mono (12.0f, true));
+    label->setColour (juce::Label::textColourId, neon);
+    label->setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    label->setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
+    label->setColour (juce::Label::outlineWhenEditingColourId, neon);
+    label->setColour (juce::TextEditor::textColourId, colours::text);
+    label->setColour (juce::TextEditor::backgroundColourId, colours::track);
+    return label;
+}
+
+void NeonLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool, int, int, int, int,
+                                    juce::ComboBox& box)
+{
+    const auto path = chamfered (juce::Rectangle<float> ((float) width, (float) height).reduced (1.0f), 6.0f);
+    g.setColour (colours::panel);
+    g.fillPath (path);
+    g.setColour (colours::cyan.withAlpha (box.isPopupActive() ? 0.9f : 0.45f));
+    g.strokePath (path, juce::PathStrokeType (1.2f));
+
+    juce::Path arrow;
+    const float cx = (float) width - 16.0f, cy = (float) height * 0.5f;
+    arrow.startNewSubPath (cx - 4.0f, cy - 2.0f);
+    arrow.lineTo (cx, cy + 2.0f);
+    arrow.lineTo (cx + 4.0f, cy - 2.0f);
+    g.setColour (colours::cyan);
+    g.strokePath (arrow, juce::PathStrokeType (1.5f));
+}
+
+juce::Font NeonLookAndFeel::getComboBoxFont (juce::ComboBox&)
+{
+    return mono (13.0f);
+}
+
+void NeonLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button, const juce::Colour&,
+                                            bool isHighlighted, bool isDown)
+{
+    const auto path = chamfered (button.getLocalBounds().toFloat().reduced (1.5f), 6.0f);
+    const bool on = button.getToggleState();
+    const bool isTab = button.getProperties().contains ("tab");
+    const auto neon = on && ! isTab ? colours::magenta : colours::cyan;
+    const float enabled = button.isEnabled() ? 1.0f : 0.35f;
+
+    g.setColour (neon.withAlpha ((on ? 0.25f : isDown ? 0.2f : isHighlighted ? 0.1f : 0.03f) * enabled));
+    g.fillPath (path);
+    if (on)
+    {
+        g.setColour (neon.withAlpha (0.3f));
+        g.strokePath (path, juce::PathStrokeType (5.0f));
+    }
+    g.setColour (neon.withAlpha ((on || isHighlighted ? 0.95f : 0.45f) * enabled));
+    g.strokePath (path, juce::PathStrokeType (1.2f));
+}
+
+juce::Font NeonLookAndFeel::getTextButtonFont (juce::TextButton&, int)
+{
+    return mono (12.0f, true);
+}
+
+void NeonLookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
+{
+    g.fillAll (colours::panel);
+    g.setColour (colours::cyan.withAlpha (0.4f));
+    g.drawRect (0, 0, width, height);
+}
+
+juce::Font NeonLookAndFeel::getPopupMenuFont()
+{
+    return mono (14.0f);
+}
+
+juce::Font NeonLookAndFeel::getAlertWindowTitleFont() { return mono (15.0f, true); }
+juce::Font NeonLookAndFeel::getAlertWindowMessageFont() { return mono (13.0f); }
+juce::Font NeonLookAndFeel::getAlertWindowFont() { return mono (13.0f); }
+
+//==============================================================================
 HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor& p)
-    : AudioProcessorEditor (p), audioProcessor (p)
+    : AudioProcessorEditor (p), audioProcessor (p), waveform (p)
 {
     setLookAndFeel (&lookAndFeel);
 
     for (size_t i = 0; i < knobs.size(); ++i)
     {
         auto& knob = knobs[i];
-        knob.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 18);
+        knob.slider.colour = i < knobs.size() / 2 ? colours::cyan : colours::magenta;
         addAndMakeVisible (knob.slider);
+        // After the colour is set, so the text box picks it up.
+        knob.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 18);
 
-        knob.label.setText (knobSpecs[i].name, juce::dontSendNotification);
+        knob.label.setText (juce::String (knobSpecs[i].name).toUpperCase(), juce::dontSendNotification);
         knob.label.setJustificationType (juce::Justification::centred);
-        knob.label.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+        knob.label.setFont (mono (11.0f, true));
         addAndMakeVisible (knob.label);
 
         knob.attachment = std::make_unique<SliderAttachment> (p.apvts, knobSpecs[i].id, knob.slider);
@@ -132,18 +273,64 @@ HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor&
 
     lofiButton.setClickingTogglesState (true);
     lofiButton.setTooltip ("Filtered, fuzzy 8-bit version of the current reverb");
+    // The glow around LOFI is drawn by the editor, outside the button's bounds.
+    lofiButton.onStateChange = [this] { repaint (lofiButton.getBounds().expanded (12)); };
     addAndMakeVisible (lofiButton);
     lofiAttachment = std::make_unique<ButtonAttachment> (p.apvts, halcyon::params::lofi, lofiButton);
 
+    for (auto* tab : { &knobsTab, &visualTab })
+    {
+        tab->getProperties().set ("tab", true);
+        tab->setColour (juce::TextButton::textColourOffId, colours::dimText);
+        tab->setClickingTogglesState (true);
+        tab->setRadioGroupId (1);
+        addAndMakeVisible (tab);
+    }
+    // Turning one tab on turns the other off and fires its onClick too, so only react to "on".
+    knobsTab.onClick = [this] { if (knobsTab.getToggleState()) showVisual (false); };
+    visualTab.onClick = [this] { if (visualTab.getToggleState()) showVisual (true); };
+    addChildComponent (waveform);
+
     refreshPresetList();
 
-    setSize (640, 470);
+    setSize (640, 530);
+    showVisual (p.apvts.state.getProperty ("view").toString() == "visual");
 }
 
 HalcyonAudioProcessorEditor::~HalcyonAudioProcessorEditor()
 {
     dialog.reset();
     setLookAndFeel (nullptr);
+}
+
+void HalcyonAudioProcessorEditor::showVisual (bool visual)
+{
+    (visual ? visualTab : knobsTab).setToggleState (true, juce::dontSendNotification);
+    waveform.setVisible (visual);
+    for (auto& knob : knobs)
+    {
+        knob.slider.setVisible (! visual);
+        knob.label.setVisible (! visual);
+    }
+
+    // Kept in the plugin state so the editor reopens on the same tab.
+    audioProcessor.apvts.state.setProperty ("view", visual ? "visual" : "knobs", nullptr);
+    repaint();
+}
+
+void HalcyonAudioProcessorEditor::setUpChoice (Choice& choice, const char* paramId, const juce::String& name,
+                                               const juce::StringArray& items)
+{
+    // Items must exist before the attachment syncs the box to the parameter.
+    choice.box.addItemList (items, 1);
+    addAndMakeVisible (choice.box);
+
+    choice.label.setText (name, juce::dontSendNotification);
+    choice.label.setFont (mono (11.0f, true));
+    choice.label.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (choice.label);
+
+    choice.attachment = std::make_unique<ComboBoxAttachment> (audioProcessor.apvts, paramId, choice.box);
 }
 
 void HalcyonAudioProcessorEditor::refreshPresetList()
@@ -283,43 +470,94 @@ void HalcyonAudioProcessorEditor::showDialog (const juce::String& title, const j
         dialog->getTextEditor ("name")->grabKeyboardFocus();
 }
 
-void HalcyonAudioProcessorEditor::setUpChoice (Choice& choice, const char* paramId, const juce::String& name,
-                                               const juce::StringArray& items)
+juce::Rectangle<int> HalcyonAudioProcessorEditor::getBodyArea() const
 {
-    // Items must exist before the attachment syncs the box to the parameter.
-    choice.box.addItemList (items, 1);
-    addAndMakeVisible (choice.box);
+    return getLocalBounds()
+        .withTrimmedTop (headerHeight + presetBarHeight + tabBarHeight)
+        .withTrimmedBottom (footerHeight)
+        .reduced (margin, 0);
+}
 
-    choice.label.setText (name, juce::dontSendNotification);
-    choice.label.setFont (juce::FontOptions (11.0f, juce::Font::bold));
-    choice.label.setJustificationType (juce::Justification::centredRight);
-    addAndMakeVisible (choice.label);
+void HalcyonAudioProcessorEditor::drawTitle (juce::Graphics& g)
+{
+    const auto header = getLocalBounds().removeFromTop (headerHeight).reduced (margin, 0);
+    const float baseline = (float) header.getCentreY() + 12.0f;
 
-    choice.attachment = std::make_unique<ComboBoxAttachment> (
-        audioProcessor.apvts, paramId, choice.box);
+    juce::GlyphArrangement glyphs;
+    const juce::Font titleFont (juce::FontOptions ("Avenir Next Condensed", 36.0f, juce::Font::bold));
+    glyphs.addLineOfText (titleFont.withExtraKerningFactor (0.06f), "REBLXERD", (float) header.getX(), baseline);
+    juce::Path title;
+    glyphs.createPath (title);
+
+    // Magenta bloom, a cyan ghost knocked slightly out of register, then the letters.
+    strokeGlow (g, title, colours::magenta, 0.6f);
+    g.setColour (colours::cyan.withAlpha (0.7f));
+    g.fillPath (title, juce::AffineTransform::translation (-2.0f, 0.0f));
+    g.setColour (colours::magenta.interpolatedWith (juce::Colours::white, 0.35f));
+    g.fillPath (title);
+
+    g.setColour (colours::cyan);
+    g.setFont (mono (10.0f, true));
+    g.drawText ("by CreativeSpxce", juce::Rectangle<float> (title.getBounds().getRight() + 14.0f, baseline - 11.0f, 120.0f, 12.0f),
+                juce::Justification::bottomLeft);
 }
 
 void HalcyonAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (colours::background);
+    const int w = getWidth(), h = getHeight();
 
-    auto header = getLocalBounds().removeFromTop (headerHeight).reduced (margin, 0);
-    g.setColour (colours::text);
-    g.setFont (juce::FontOptions (24.0f, juce::Font::bold));
-    g.drawText ("HALCYON", header, juce::Justification::centredLeft);
+    g.setGradientFill (juce::ColourGradient (colours::background, 0.0f, 0.0f, colours::horizon, 0.0f, (float) h, false));
+    g.fillAll();
 
-    g.setColour (colours::accent);
-    g.setFont (juce::FontOptions (12.0f));
-    g.drawText ("REVERB", header.withTrimmedLeft (124), juce::Justification::centredLeft);
+    g.setColour (colours::cyan.withAlpha (0.035f));
+    for (int x = 0; x < w; x += 24)
+        g.drawVerticalLine (x, 0.0f, (float) h);
+    for (int y = 0; y < h; y += 24)
+        g.drawHorizontalLine (y, 0.0f, (float) w);
 
-    auto body = getLocalBounds().withTrimmedTop (headerHeight + presetBarHeight).reduced (margin, 0).withTrimmedBottom (margin);
-    g.setColour (colours::panel);
-    g.fillRoundedRectangle (body.toFloat(), 10.0f);
+    g.setColour (juce::Colours::black.withAlpha (0.22f));
+    for (int y = 0; y < h; y += 3)
+        g.fillRect (0, y, w, 1);
+
+    drawTitle (g);
+
+    // Knob panel with bright brackets on its two square corners.
+    const auto body = getBodyArea().toFloat();
+    const auto panelPath = chamfered (body, 16.0f);
+    g.setColour (colours::panel.withAlpha (0.88f));
+    g.fillPath (panelPath);
+    g.setColour (colours::cyan.withAlpha (0.28f));
+    g.strokePath (panelPath, juce::PathStrokeType (1.0f));
+
+    juce::Path brackets;
+    brackets.startNewSubPath (body.getRight() - 26.0f, body.getY());
+    brackets.lineTo (body.getRight(), body.getY());
+    brackets.lineTo (body.getRight(), body.getY() + 26.0f);
+    brackets.startNewSubPath (body.getX(), body.getBottom() - 26.0f);
+    brackets.lineTo (body.getX(), body.getBottom());
+    brackets.lineTo (body.getX() + 26.0f, body.getBottom());
+    g.setColour (colours::cyan);
+    g.strokePath (brackets, juce::PathStrokeType (2.0f));
+
+    if (! waveform.isVisible())
+    {
+        g.setColour (colours::magenta.withAlpha (0.18f));
+        g.drawHorizontalLine ((int) body.getCentreY(), body.getX() + 24.0f, body.getRight() - 24.0f);
+    }
+
+    if (lofiButton.getToggleState())
+        strokeGlow (g, chamfered (lofiButton.getBounds().toFloat().reduced (1.5f), 6.0f), colours::magenta, 1.0f);
+
+    auto footer = getLocalBounds().removeFromBottom (footerHeight).reduced (margin, 0);
+    g.setFont (mono (10.0f));
+    g.setColour (colours::dimText);
+    g.drawText ("// REBLXERD v" JucePlugin_VersionString " :: ALGORITHMIC REVERB", footer, juce::Justification::centredLeft);
+    g.drawText ("CREATIVESPXCE", footer, juce::Justification::centredRight);
 }
 
 void HalcyonAudioProcessorEditor::resized()
 {
-    auto header = getLocalBounds().removeFromTop (headerHeight).reduced (margin, 16);
+    auto header = getLocalBounds().removeFromTop (headerHeight).reduced (margin, 18);
     auto placeChoice = [&header] (Choice& choice)
     {
         choice.box.setBounds (header.removeFromRight (110));
@@ -337,16 +575,24 @@ void HalcyonAudioProcessorEditor::resized()
     bar.removeFromLeft (4);
     nextButton.setBounds (bar.removeFromLeft (32));
     bar.removeFromLeft (8);
-    deleteButton.setBounds (bar.removeFromRight (64));
+    deleteButton.setBounds (bar.removeFromRight (70));
     bar.removeFromRight (6);
     saveButton.setBounds (bar.removeFromRight (64));
     bar.removeFromRight (8);
     presetBox.setBounds (bar);
 
+    auto tabs = getLocalBounds().withTrimmedTop (headerHeight + presetBarHeight).removeFromTop (tabBarHeight)
+                    .reduced (margin, 0).withTrimmedBottom (8);
+    knobsTab.setBounds (tabs.removeFromLeft (84));
+    tabs.removeFromLeft (6);
+    visualTab.setBounds (tabs.removeFromLeft (84));
+
     if (dialog != nullptr)
         dialog->setCentrePosition (getLocalBounds().getCentre());
 
-    auto body = getLocalBounds().withTrimmedTop (headerHeight + presetBarHeight).reduced (margin, 0).withTrimmedBottom (margin).reduced (10);
+    waveform.setBounds (getBodyArea().reduced (6, 10));
+
+    auto body = getBodyArea().reduced (12);
     const int rowHeight = body.getHeight() / 2;
     const int columns = 5;
 
@@ -357,8 +603,8 @@ void HalcyonAudioProcessorEditor::resized()
         for (int col = 0; col < columns; ++col)
         {
             auto& knob = knobs[(size_t) (row * columns + col)];
-            auto cell = rowArea.removeFromLeft (cellWidth).reduced (4);
-            knob.label.setBounds (cell.removeFromTop (20));
+            auto cell = rowArea.removeFromLeft (cellWidth).reduced (2);
+            knob.label.setBounds (cell.removeFromTop (18));
             knob.slider.setBounds (cell);
         }
     }

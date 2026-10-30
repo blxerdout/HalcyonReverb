@@ -1,4 +1,6 @@
-# Halcyon Reverb
+# Reblxerd
+
+![Reblxerd](docs/screenshot.png)
 
 A multi-mode algorithmic reverb for macOS (VST3, AU and a standalone app), built with JUCE.
 It's an original design in the spirit of classic "vintage" digital reverbs: several
@@ -20,13 +22,30 @@ modes with distinct character, plus a colour control that shapes bandwidth, moti
 | Width | Stereo width of the wet signal |
 | **Lofi** | Turns the wet signal into a filtered, fuzzy 8-bit version of the current reverb (band-pass, fuzz, ~11 kHz sample-and-hold, 8-bit quantise). Crossfades in, so it can be automated |
 
+## Visual tab
+
+![Visual tab](docs/screenshot-visual.png)
+
+The **VISUAL** tab swaps the knobs for the reverb's actual impulse response, rendered by the
+engine in the background whenever a setting changes, so Mode, Color, Lofi and modulation all
+show up in the shape. The time axis is stretched so the first few hundred milliseconds are readable.
+Drag anywhere on the plot and the nearest handle follows:
+
+| Handle | Left / right | Up / down |
+| --- | --- | --- |
+| **PRE / MIX** (cyan) | Pre-delay | Mix (height of the waveform) |
+| **SIZE** (yellow) | | Size |
+| **DECAY / TONE** (magenta) | Decay time | High Cut (higher = brighter tail) |
+
+Drags are recorded as normal automation, and **SAVE** stores whatever you shaped as a user preset.
+
 ## Presets
 
 The preset bar holds 50 factory presets, ten per Mode, running from everyday settings
 to experimental ones (lofi, extreme modulation, metallic resonators, frozen tails).
 The arrows step through every preset; **Save** stores the current settings as a user preset and
 **Delete** removes the selected user preset. User presets are XML files in
-`~/Library/Audio/Presets/creativespxce/Halcyon Reverb`, so they can be backed up or shared.
+`~/Library/Audio/Presets/creativespxce/Reblxerd`, so they can be backed up or shared.
 
 ## How it works
 

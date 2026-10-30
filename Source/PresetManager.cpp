@@ -15,8 +15,16 @@ PresetManager::PresetManager (juce::AudioProcessorValueTreeState& state)
 
 juce::File PresetManager::getUserPresetDirectory()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-        .getChildFile ("Audio/Presets/creativespxce/Halcyon Reverb");
+    const auto root = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                          .getChildFile ("Audio/Presets/creativespxce");
+    const auto dir = root.getChildFile ("Reblxerd");
+
+    // Carry over presets saved before the plugin was renamed.
+    const auto oldDir = root.getChildFile ("Halcyon Reverb");
+    if (oldDir.isDirectory() && ! dir.exists())
+        oldDir.moveFileTo (dir);
+
+    return dir;
 }
 
 juce::Array<juce::File> PresetManager::getUserPresets() const

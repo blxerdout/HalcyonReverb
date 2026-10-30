@@ -34,7 +34,7 @@ endif()
 add_subdirectory(JUCE)
 
 juce_add_plugin(HalcyonReverb
-    PRODUCT_NAME "Halcyon Reverb"
+    PRODUCT_NAME "Reblxerd"
     COMPANY_NAME "creativespxce"
     BUNDLE_ID "com.creativespxce.halcyonreverb"
     PLUGIN_MANUFACTURER_CODE Cspx
@@ -52,14 +52,14 @@ juce_add_plugin(HalcyonReverb
 target_sources(HalcyonReverb PRIVATE
     Source/Parameters.cpp
     Source/PresetManager.cpp
+    Source/WaveformView.cpp
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp)
 
 target_compile_definitions(HalcyonReverb PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0)
+    JUCE_VST3_CAN_REPLACE_VST2=0)
 
 target_link_libraries(HalcyonReverb
     PRIVATE

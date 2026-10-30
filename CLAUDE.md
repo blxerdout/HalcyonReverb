@@ -1,4 +1,4 @@
-# Halcyon Reverb
+# Reblxerd (formerly Halcyon Reverb)
 
 Original multi-mode algorithmic reverb plugin (VST3, AU, Standalone) for macOS, built with JUCE + CMake.
 Inspired by the character of Valhalla VintageVerb, but none of Valhalla's code, algorithms or UI is used or copied.
@@ -8,8 +8,12 @@ Inspired by the character of Valhalla VintageVerb, but none of Valhalla's code, 
 - `Source/dsp/ReverbEngine.*`: the DSP, plain C++17 with **no JUCE dependency** (keep it that way so it stays testable offline)
 - `Source/dsp/FactoryPresets.h`: 50 factory presets (10 per Mode, basic to experimental), JUCE-free. Each group of ten must match `modeNames` order; the tests check this
 - `Source/Parameters.*`: APVTS layout. Parameter IDs are saved in DAW sessions, so never rename them
-- `Source/PresetManager.*`: factory/user preset loading; user presets are `.halcyonpreset` XML in `~/Library/Audio/Presets/creativespxce/Halcyon Reverb`. Current preset name is the `presetName` property on the APVTS state
-- `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE wrapper and UI
+- `Source/PresetManager.*`: factory/user preset loading; user presets are `.halcyonpreset` XML in `~/Library/Audio/Presets/creativespxce/Reblxerd` (old `Halcyon Reverb` folder is moved there on first use). Current preset name is the `presetName` property on the APVTS state
+- `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE wrapper and UI. Cyberpunk theme (`NeonLookAndFeel`); `NeonKnob` glows while turned
+- Shown name is `PRODUCT_NAME "Reblxerd"`; internal names (CMake target, `halcyon` namespace, plugin/manufacturer codes, bundle ID) deliberately unchanged so existing DAW sessions still load
+- `Source/WaveformView.*`: Visual tab. Renders the IR with a private `ReverbEngine` at 16 kHz on a background thread (superseded renders abort early), maps it to dB, draws on a power-0.35 time axis; three drag handles set pre-delay/mix, size, decay/high cut. Tab choice is the `view` property on the APVTS state
+- `Source/Theme.h`: shared colours and drawing helpers
+- `docs/screenshot*.png`: rendered from the editor offscreen (no screen-recording permission here); regenerate after UI changes
 - `tests/EngineTests.cpp`: JUCE-free checks (stability, RT60 vs Decay, L/R correlation, CPU). Pass a folder arg to write IR WAVs
 
 ## Build

@@ -38,8 +38,10 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     halcyon::PresetManager presets { apvts };
 
-private:
+    // Current parameter values in engine form. Safe to call from any thread.
     halcyon::ReverbParams readParams() const;
+
+private:
 
     halcyon::ReverbEngine engine;
 
