@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PresetManager.h"
+#include "dsp/OnsetDetector.h"
 #include "dsp/ReverbEngine.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -41,9 +42,24 @@ public:
     // Current parameter values in engine form. Safe to call from any thread.
     halcyon::ReverbParams readParams() const;
 
+    // What the audio thread last heard, for the Visual tab's playhead.
+    struct Activity
+    {
+        int onsetCount = 0;              // increments on every new sound at the input
+        double secondsSinceOnset = 0.0;  // audio time since the most recent one
+        float wetPeak = 0.0f;            // reverb output level of the latest block
+    };
+    Activity getActivity() const;
+
 private:
 
     halcyon::ReverbEngine engine;
+    halcyon::OnsetDetector onsets;
+
+    std::atomic<std::int64_t> samplesProcessed { 0 }, lastOnsetSample { 0 };
+    std::atomic<int> onsetCount { 0 };
+    std::atomic<double> currentSampleRate { 48000.0 };
+    std::atomic<float> wetPeak { 0.0f };
 
     struct
     {

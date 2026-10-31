@@ -1,0 +1,24 @@
+REBLXERD (beta) by CreativeSpxce
+================================
+
+INSTALL
+1. Double-click "Install Reblxerd.pkg" and follow the steps.
+   It installs:
+     VST3  ->  /Library/Audio/Plug-Ins/VST3/Reblxerd.vst3
+     AU    ->  /Library/Audio/Plug-Ins/Components/Reblxerd.component
+     App   ->  /Applications/Reblxerd.app (standalone, no DAW needed)
+2. Restart your DAW and rescan plug-ins if it doesn't show up.
+   Ableton Live: Settings > Plug-Ins > Rescan (turn on "Use VST3" / "Use Audio Units").
+   FL Studio: Options > Manage plugins > Find plugins.
+
+IF MACOS SAYS IT CAN'T BE OPENED
+This beta isn't signed by Apple yet, so macOS may block the installer the first time.
+  - Right-click (or Control-click) "Install Reblxerd.pkg" and choose Open, then Open again.
+  - On newer macOS: try to open it once, then go to System Settings > Privacy & Security,
+    scroll down and click "Open Anyway".
+
+UNINSTALL
+Delete the three items listed above.
+
+FEEDBACK
+Please tell me your macOS version, DAW and version, what you did, and what happened.

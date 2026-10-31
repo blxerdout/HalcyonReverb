@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(HALCYON_BUILD_TESTS "Build the JUCE-free engine tests" ON)
+option(HALCYON_COPY_PLUGIN "Install the plugins into the user's plug-in folders after building" ON)
 
 # ---- Engine (no JUCE) -------------------------------------------------------
 
@@ -47,7 +48,7 @@ juce_add_plugin(HalcyonReverb
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     VST3_CATEGORIES Fx Reverb
     AU_MAIN_TYPE kAudioUnitType_Effect
-    COPY_PLUGIN_AFTER_BUILD TRUE)
+    COPY_PLUGIN_AFTER_BUILD ${HALCYON_COPY_PLUGIN})
 
 target_sources(HalcyonReverb PRIVATE
     Source/Parameters.cpp

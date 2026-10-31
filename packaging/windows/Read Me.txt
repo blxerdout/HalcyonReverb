@@ -1,0 +1,17 @@
+REBLXERD (beta) by CreativeSpxce
+
+This installs:
+  VST3  ->  C:\Program Files\Common Files\VST3\Reblxerd.vst3
+  App   ->  C:\Program Files\Reblxerd\Reblxerd.exe (standalone, optional)
+
+After installing, open your DAW and rescan plug-ins:
+  Ableton Live: Options > Preferences > Plug-Ins > turn on "Use VST3 Plug-In System Folders", then Rescan
+  FL Studio: Options > Manage plugins > Find plugins
+
+If Windows shows "Windows protected your PC": this beta isn't code-signed yet.
+Click "More info", then "Run anyway".
+
+To uninstall: Settings > Apps > Reblxerd > Uninstall.
+
+Feedback: please include your Windows version, DAW and version, what you did,
+and what happened.

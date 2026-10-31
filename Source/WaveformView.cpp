@@ -194,11 +194,22 @@ void WaveformView::timerCallback()
         notify();
     }
 
-    // A scan line sweeps through the tail in real time, then waits a beat.
-    const float tailEnd = shown.preDelayMs / 1000.0f + shown.decaySeconds;
-    sweepSeconds += 1.0f / 60.0f;
-    if (sweepSeconds > juce::jmin (tailEnd, 8.0f) + 0.6f)
-        sweepSeconds = 0.0f;
+    const auto activity = audioProcessor.getActivity();
+    const double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+    if (activity.onsetCount != lastOnsetCount)
+    {
+        lastOnsetCount = activity.onsetCount;
+        onsetWallTime = now - activity.secondsSinceOnset;
+        playheadActive = true;
+    }
+
+    const float level = juce::jlimit (0.0f, 1.0f, 1.0f - juce::Decibels::gainToDecibels (activity.wetPeak, floorDb) / floorDb);
+    playheadLevel = juce::jmax (level, playheadLevel * 0.9f);
+
+    playheadSeconds = (float) (now - onsetWallTime);
+    const float tailEnd = shown.preDelayMs / 1000.0f + shown.decaySeconds * 1.2f;
+    if (playheadSeconds > tailEnd || (playheadSeconds > 0.5f && playheadLevel < 0.01f))
+        playheadActive = false;
 
     dragGlow += ((dragging != Handle::none ? 1.0f : 0.0f) - dragGlow) * 0.2f;
 
@@ -342,7 +353,6 @@ void WaveformView::paint (juce::Graphics& g)
     const auto plot = getPlotArea();
     const float centre = plot.getCentreY(), half = plot.getHeight() * 0.5f;
     const float amplitude = amplitudeForMix (shown.mix) * half;
-    const float pre = shown.preDelayMs / 1000.0f;
 
     // Time grid.
     g.setFont (mono (9.0f));
@@ -396,14 +406,15 @@ void WaveformView::paint (juce::Graphics& g)
         g.strokePath (lower, juce::PathStrokeType (1.0f));
     }
 
-    // Scan line.
-    if (sweepSeconds <= pre + shown.decaySeconds)
+    // Playhead: where the most recent sound is in its reverb tail, as bright as the reverb is loud.
+    if (playheadActive)
     {
-        const float x = timeToX (sweepSeconds);
+        const float x = timeToX (playheadSeconds);
+        const float brightness = 0.25f + 0.75f * playheadLevel;
         g.setGradientFill (juce::ColourGradient (colours::text.withAlpha (0.0f), x - 18.0f, 0.0f,
-                                                 colours::text.withAlpha (0.18f), x, 0.0f, false));
+                                                 colours::text.withAlpha (0.22f * brightness), x, 0.0f, false));
         g.fillRect (juce::Rectangle<float> (x - 18.0f, plot.getY(), 18.0f, plot.getHeight()));
-        g.setColour (colours::text.withAlpha (0.5f));
+        g.setColour (colours::text.withAlpha (0.8f * brightness));
         g.drawVerticalLine ((int) x, plot.getY(), plot.getBottom());
     }
 

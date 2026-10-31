@@ -1,0 +1,83 @@
+name: Build
+
+# Every push builds and tests both platforms. Pushing a tag like v0.1.0-beta1
+# also publishes the Mac .dmg and Windows installer as a GitHub pre-release.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Version label
+        run: echo "VERSION=$(echo '${{ github.ref_name }}' | sed -E 's/^v//; s/^main$/dev/')" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DHALCYON_COPY_PLUGIN=OFF
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: packaging/mac/build-dmg.sh build "$VERSION" dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: dist/*.dmg
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Version label
+        shell: bash
+        run: echo "VERSION=$(echo '${{ github.ref_name }}' | sed -E 's/^v//; s/^main$/dev/')" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          cmake -B build -G "Visual Studio 17 2022" -A x64 -DHALCYON_COPY_PLUGIN=OFF
+          cmake --build build --config Release --parallel
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup -y --no-progress
+            $env:Path += ";${env:ProgramFiles(x86)}\Inno Setup 6"
+          }
+          iscc /DAppVersion=$env:VERSION /DBuildDir="$PWD\build\HalcyonReverb_artefacts\Release" /DOutputDir="$PWD\dist" packaging\windows\Reblxerd.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.exe
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: dist/*

@@ -9,11 +9,12 @@ Inspired by the character of Valhalla VintageVerb, but none of Valhalla's code, 
 - `Source/dsp/FactoryPresets.h`: 50 factory presets (10 per Mode, basic to experimental), JUCE-free. Each group of ten must match `modeNames` order; the tests check this
 - `Source/Parameters.*`: APVTS layout. Parameter IDs are saved in DAW sessions, so never rename them
 - `Source/PresetManager.*`: factory/user preset loading; user presets are `.halcyonpreset` XML in `~/Library/Audio/Presets/creativespxce/Reblxerd` (old `Halcyon Reverb` folder is moved there on first use). Current preset name is the `presetName` property on the APVTS state
-- `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE wrapper and UI. Cyberpunk theme (`NeonLookAndFeel`); `NeonKnob` glows while turned
+- `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE wrapper and UI. Cyberpunk theme (`NeonLookAndFeel`); `NeonKnob` glows while turned. Editor is resizable (corner grip, 640x530 to 1920x1440); size is the `editorWidth`/`editorHeight` properties on the APVTS state, read before `setResizeLimits` (which resizes and would overwrite them)
 - Shown name is `PRODUCT_NAME "Reblxerd"`; internal names (CMake target, `halcyon` namespace, plugin/manufacturer codes, bundle ID) deliberately unchanged so existing DAW sessions still load
-- `Source/WaveformView.*`: Visual tab. Renders the IR with a private `ReverbEngine` at 16 kHz on a background thread (superseded renders abort early), maps it to dB, draws on a power-0.35 time axis; three drag handles set pre-delay/mix, size, decay/high cut. Tab choice is the `view` property on the APVTS state
+- `Source/WaveformView.*`: Visual tab. Renders the IR with a private `ReverbEngine` at 16 kHz on a background thread (superseded renders abort early), maps it to dB, draws on a power-0.35 time axis; three drag handles set pre-delay/mix, size, decay/high cut. Tab choice is the `view` property on the APVTS state. Playhead is driven by `getActivity()`: `dsp/OnsetDetector.h` (JUCE-free, tested) runs on the input in `processBlock`, the view restarts on each new onset and runs on the wall clock, brightness follows `ReverbEngine::getLastWetPeak()`
 - `Source/Theme.h`: shared colours and drawing helpers
 - `docs/screenshot*.png`: rendered from the editor offscreen (no screen-recording permission here); regenerate after UI changes
+- `packaging/`: `mac/build-dmg.sh` (pkg in a dmg; bundles marked non-relocatable, ad-hoc sealed unless `DEVELOPER_ID_*` is set) and `windows/Reblxerd.iss` (Inno Setup). `.github/workflows/build.yml` builds both on every push and makes a pre-release on `v*` tags. Windows can't be built on this Mac; CI is the only Windows build. Title font falls back to Bahnschrift on Windows
 - `tests/EngineTests.cpp`: JUCE-free checks (stability, RT60 vs Decay, L/R correlation, CPU). Pass a folder arg to write IR WAVs
 
 ## Build

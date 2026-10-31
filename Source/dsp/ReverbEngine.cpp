@@ -225,6 +225,7 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
 {
     const float k = smoothCoef;
     auto glide = [k] (float& v, float target) { v += k * (target - v); };
+    float wetPeak = 0.0f;
 
     for (int n = 0; n < numSamples; ++n)
     {
@@ -317,10 +318,13 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
         const float side = 0.5f * (wetL - wetR) * width;
         wetL = mid + side;
         wetR = mid - side;
+        wetPeak = std::max (wetPeak, std::max (std::abs (wetL), std::abs (wetR)));
 
         left[n] = dryL + mix * (wetL - dryL);
         right[n] = dryR + mix * (wetR - dryR);
     }
+
+    lastWetPeak = wetPeak;
 }
 
 } // namespace halcyon

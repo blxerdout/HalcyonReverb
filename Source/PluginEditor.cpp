@@ -34,6 +34,10 @@ constexpr int footerHeight = 26;
 constexpr int margin = 20;
 constexpr int userPresetIdOffset = 1000;
 
+// The layout is built for the default size and only grows from there.
+constexpr int defaultWidth = 640, defaultHeight = 530;
+constexpr int maxWidth = 1920, maxHeight = 1440;
+
 } // namespace
 
 //==============================================================================
@@ -235,6 +239,25 @@ juce::Font NeonLookAndFeel::getAlertWindowTitleFont() { return mono (15.0f, true
 juce::Font NeonLookAndFeel::getAlertWindowMessageFont() { return mono (13.0f); }
 juce::Font NeonLookAndFeel::getAlertWindowFont() { return mono (13.0f); }
 
+void NeonLookAndFeel::drawCornerResizer (juce::Graphics& g, int w, int h, bool isMouseOver, bool isMouseDragging)
+{
+    const auto neon = isMouseDragging ? colours::magenta : colours::cyan;
+    const float alpha = isMouseOver || isMouseDragging ? 0.95f : 0.45f;
+    const float size = (float) juce::jmin (w, h);
+
+    juce::Path grip;
+    for (float inset : { 0.3f, 0.6f })
+    {
+        grip.startNewSubPath ((float) w - size * (1.0f - inset), (float) h - 3.0f);
+        grip.lineTo ((float) w - 3.0f, (float) h - size * (1.0f - inset));
+    }
+
+    if (isMouseDragging)
+        strokeGlow (g, grip, neon, 0.6f);
+    g.setColour (neon.withAlpha (alpha));
+    g.strokePath (grip, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
 //==============================================================================
 HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor& p)
     : AudioProcessorEditor (p), audioProcessor (p), waveform (p)
@@ -293,7 +316,14 @@ HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor&
 
     refreshPresetList();
 
-    setSize (640, 530);
+    // Resizable from the corner. The size lives in the plugin state so the
+    // window reopens at the size it was left at.
+    // Read before setResizeLimits, whose resize would overwrite the saved size.
+    const int savedWidth = p.apvts.state.getProperty ("editorWidth", defaultWidth);
+    const int savedHeight = p.apvts.state.getProperty ("editorHeight", defaultHeight);
+    setResizable (true, true);
+    setResizeLimits (defaultWidth, defaultHeight, maxWidth, maxHeight);
+    setSize (juce::jlimit (defaultWidth, maxWidth, savedWidth), juce::jlimit (defaultHeight, maxHeight, savedHeight));
     showVisual (p.apvts.state.getProperty ("view").toString() == "visual");
 }
 
@@ -484,7 +514,12 @@ void HalcyonAudioProcessorEditor::drawTitle (juce::Graphics& g)
     const float baseline = (float) header.getCentreY() + 12.0f;
 
     juce::GlyphArrangement glyphs;
+   #if JUCE_WINDOWS
+    // Avenir isn't on Windows; Bahnschrift (Windows 10 and later) is the closest condensed face.
+    const juce::Font titleFont (juce::FontOptions ("Bahnschrift SemiBold Condensed", 38.0f, juce::Font::plain));
+   #else
     const juce::Font titleFont (juce::FontOptions ("Avenir Next Condensed", 36.0f, juce::Font::bold));
+   #endif
     glyphs.addLineOfText (titleFont.withExtraKerningFactor (0.06f), "REBLXERD", (float) header.getX(), baseline);
     juce::Path title;
     glyphs.createPath (title);
@@ -557,6 +592,9 @@ void HalcyonAudioProcessorEditor::paint (juce::Graphics& g)
 
 void HalcyonAudioProcessorEditor::resized()
 {
+    audioProcessor.apvts.state.setProperty ("editorWidth", getWidth(), nullptr);
+    audioProcessor.apvts.state.setProperty ("editorHeight", getHeight(), nullptr);
+
     auto header = getLocalBounds().removeFromTop (headerHeight).reduced (margin, 18);
     auto placeChoice = [&header] (Choice& choice)
     {

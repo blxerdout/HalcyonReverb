@@ -72,7 +72,14 @@ private:
     std::vector<float> columnTop, columnBottom;
 
     Handle hovered = Handle::none, dragging = Handle::none;
-    float sweepSeconds = 0.0f;
+
+    // Playhead: restarts on every new sound the processor hears, then runs on
+    // the wall clock so it moves smoothly between audio blocks.
+    int lastOnsetCount = 0;
+    double onsetWallTime = 0.0;
+    bool playheadActive = false;
+    float playheadSeconds = 0.0f;
+    float playheadLevel = 0.0f; // 0..1, reverb output on the same dB scale as the drawing
     float dragGlow = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveformView)

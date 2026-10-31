@@ -214,6 +214,9 @@ public:
     // In-place stereo processing. Both pointers must be valid.
     void process (float* left, float* right, int numSamples);
 
+    // Peak level of the wet signal (before mix) during the last process() call.
+    float getLastWetPeak() const { return lastWetPeak; }
+
 private:
     void updateLoopGains();
 
@@ -232,6 +235,7 @@ private:
     float width = 1.0f, widthTarget = 1.0f;
     float erLevel = 0.0f, erLevelTarget = 0.0f;
     float lofiAmount = 0.0f, lofiTarget = 0.0f;
+    float lastWetPeak = 0.0f;
 
     // Non-smoothed settings.
     float inputDiffGain = 0.6f;

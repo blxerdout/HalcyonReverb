@@ -49,11 +49,14 @@ void HalcyonAudioProcessor::prepareToPlay (double sampleRate, int)
     engine.prepare (sampleRate);
     engine.setParams (readParams());
     engine.reset();
+    onsets.prepare (sampleRate);
+    currentSampleRate = sampleRate;
 }
 
 void HalcyonAudioProcessor::reset()
 {
     engine.reset();
+    onsets.reset();
 }
 
 bool HalcyonAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -81,8 +84,28 @@ void HalcyonAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     for (int ch = std::max (numIn, 2); ch < numOut; ++ch)
         buffer.clear (ch, 0, numSamples);
 
+    const auto blockStart = samplesProcessed.load();
+    const int onset = onsets.process (buffer.getReadPointer (0), buffer.getReadPointer (1), numSamples);
+    if (onset >= 0)
+    {
+        lastOnsetSample = blockStart + onset;
+        ++onsetCount;
+    }
+
     engine.setParams (readParams());
     engine.process (buffer.getWritePointer (0), buffer.getWritePointer (1), numSamples);
+
+    wetPeak = engine.getLastWetPeak();
+    samplesProcessed = blockStart + numSamples;
+}
+
+HalcyonAudioProcessor::Activity HalcyonAudioProcessor::getActivity() const
+{
+    Activity activity;
+    activity.onsetCount = onsetCount.load();
+    activity.secondsSinceOnset = (double) (samplesProcessed.load() - lastOnsetSample.load()) / currentSampleRate.load();
+    activity.wetPeak = wetPeak.load();
+    return activity;
 }
 
 double HalcyonAudioProcessor::getTailLengthSeconds() const

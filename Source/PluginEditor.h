@@ -49,6 +49,8 @@ public:
     juce::Font getAlertWindowTitleFont() override;
     juce::Font getAlertWindowMessageFont() override;
     juce::Font getAlertWindowFont() override;
+
+    void drawCornerResizer (juce::Graphics&, int w, int h, bool isMouseOver, bool isMouseDragging) override;
 };
 
 class HalcyonAudioProcessorEditor final : public juce::AudioProcessorEditor

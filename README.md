@@ -22,6 +22,9 @@ modes with distinct character, plus a colour control that shapes bandwidth, moti
 | Width | Stereo width of the wet signal |
 | **Lofi** | Turns the wet signal into a filtered, fuzzy 8-bit version of the current reverb (band-pass, fuzz, ~11 kHz sample-and-hold, 8-bit quantise). Crossfades in, so it can be automated |
 
+Drag the grip in the bottom-right corner to resize the window (640×530 up to 1920×1440). The knobs
+and the waveform grow with it, and the size is saved with your session.
+
 ## Visual tab
 
 ![Visual tab](docs/screenshot-visual.png)
@@ -38,6 +41,10 @@ Drag anywhere on the plot and the nearest handle follows:
 | **DECAY / TONE** (magenta) | Decay time | High Cut (higher = brighter tail) |
 
 Drags are recorded as normal automation, and **SAVE** stores whatever you shaped as a user preset.
+
+The playhead follows the audio going through the plugin: each new sound at the input (a hit, a
+note, a phrase) starts it from zero, it moves through the tail in real time, and it dims as the
+reverb dies away. A held note or steady pad starts it once rather than continuously.
 
 ## Presets
 
@@ -96,3 +103,15 @@ Pass a folder to `engine_tests` to also write impulse responses as WAV files.
 JUCE 8 is dual-licensed: AGPLv3, or a JUCE commercial licence (which includes a free
 Starter tier below a revenue limit). Check which one applies before you sell or
 distribute closed-source builds.
+
+## Beta builds
+
+Push a tag like `v0.1.0-beta1` and GitHub Actions (`.github/workflows/build.yml`) builds and tests
+both platforms, then publishes a pre-release with:
+
+- `Reblxerd-<version>-mac.dmg`: an installer for the VST3, AU and standalone app (Apple Silicon and Intel)
+- `Reblxerd-<version>-win-setup.exe`: an installer for the VST3 and standalone app (64-bit Windows)
+
+To build the Mac one locally: `packaging/mac/build-dmg.sh build/release <version> <output folder>`.
+Builds are unsigned until signing credentials are added (see the script header), so testers will
+see a one-time macOS "Open Anyway" / Windows "Run anyway" prompt, which each Read Me explains.

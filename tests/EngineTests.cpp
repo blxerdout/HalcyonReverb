@@ -3,6 +3,7 @@
 // Pass a directory as the first argument to also write impulse responses as WAV files.
 
 #include "dsp/FactoryPresets.h"
+#include "dsp/OnsetDetector.h"
 #include "dsp/ReverbEngine.h"
 
 #include <chrono>
@@ -320,6 +321,50 @@ int main (int argc, char** argv)
         }
         check (misfiled == 0, "each preset sits in its Mode's group of ten");
         check (unstable == 0, std::to_string (factoryPresets.size()) + " presets finite and bounded");
+    }
+
+    std::printf ("\nOnset detector (drives the Visual tab playhead)\n");
+    {
+        auto countOnsets = [] (const std::vector<float>& signal, std::vector<int>& positions)
+        {
+            OnsetDetector detector;
+            detector.prepare (sampleRate);
+            constexpr int block = 256;
+            positions.clear();
+            for (size_t pos = 0; pos < signal.size(); pos += block)
+            {
+                const int n = (int) std::min ((size_t) block, signal.size() - pos);
+                const int hit = detector.process (signal.data() + pos, signal.data() + pos, n);
+                if (hit >= 0)
+                    positions.push_back ((int) pos + hit);
+            }
+            return (int) positions.size();
+        };
+
+        std::vector<int> at;
+        check (countOnsets (std::vector<float> (48000, 0.0f), at) == 0, "silence: no onsets");
+
+        // Two drum-like hits half a second apart.
+        std::vector<float> hits (96000, 0.0f);
+        for (int start : { 4800, 28800 })
+            for (int i = 0; i < 4800; ++i)
+                hits[(size_t) (start + i)] = 0.8f * std::exp (-(float) i / 600.0f) * std::sin ((float) i * 0.3f);
+        const bool twoHits = countOnsets (hits, at) == 2 && std::abs (at[0] - 4800) < 48 && std::abs (at[1] - 28800) < 48;
+        check (twoHits, "two hits found within 1 ms of where they start");
+
+        // A sustained tone triggers once at its start, not continuously.
+        std::vector<float> held (96000, 0.0f);
+        for (size_t i = 9600; i < held.size(); ++i)
+            held[i] = 0.5f * std::sin ((float) i * 0.05f);
+        check (countOnsets (held, at) == 1, "held note triggers once");
+
+        // Very quiet noise stays under the threshold.
+        std::mt19937 rng (5);
+        std::uniform_real_distribution<float> dist (-0.001f, 0.001f);
+        std::vector<float> hiss (48000);
+        for (auto& v : hiss)
+            v = dist (rng);
+        check (countOnsets (hiss, at) == 0, "background hiss ignored");
     }
 
     std::printf ("\nCPU\n");
