@@ -56,6 +56,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { mode, 1 }, "Mode", modeNames, 1));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { color, 1 }, "Color", colorNames, 0));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { lofi, 1 }, "Lofi", false));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { speaker, 1 }, "Speaker", speakerNames, 0));
 
     return layout;
 }

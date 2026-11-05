@@ -151,6 +151,7 @@ void ReverbEngine::prepare (double sampleRate)
 
     lofiL.prepare (fs);
     lofiR.prepare (fs);
+    speakerStage.prepare (fs);
 
     reset();
 }
@@ -171,6 +172,7 @@ void ReverbEngine::reset()
     for (auto& d : damping) d.z = 0.0f;
     lofiL.clear();
     lofiR.clear();
+    speakerStage.snap();
 
     // Jump straight to targets so a fresh instance doesn't glide in.
     lineLen = lineLenTarget;
@@ -219,6 +221,7 @@ void ReverbEngine::setParams (const ReverbParams& p)
     widthTarget = std::clamp (p.width, 0.0f, 1.0f);
     erLevelTarget = mode.erLevel;
     lofiTarget = p.lofi ? 1.0f : 0.0f;
+    speakerStage.setModel (p.speaker);
 
     const float diffusion = std::clamp (p.diffusion, 0.0f, 1.0f);
     inputDiffGain = 0.75f * diffusion * mode.diffScale;
@@ -362,6 +365,7 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
 
         left[n] = dryL + mix * (wetL - dryL);
         right[n] = dryR + mix * (wetR - dryR);
+        speakerStage.process (left[n], right[n]);
     }
 
     lastWetPeak = wetPeak;

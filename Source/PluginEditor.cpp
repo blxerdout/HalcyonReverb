@@ -282,6 +282,8 @@ HalcyonAudioProcessorEditor::HalcyonAudioProcessorEditor (HalcyonAudioProcessor&
 
     setUpChoice (mode, halcyon::params::mode, "MODE", halcyon::params::modeNames);
     setUpChoice (color, halcyon::params::color, "COLOR", halcyon::params::colorNames);
+    setUpChoice (speaker, halcyon::params::speaker, "SPEAKER", halcyon::params::speakerNames);
+    speaker.box.setTooltip ("Play the whole output through a real-world speaker");
 
     presetBox.setTextWhenNothingSelected ("Default");
     presetBox.onChange = [this] { loadPresetById (presetBox.getSelectedId()); };
@@ -380,6 +382,14 @@ void HalcyonAudioProcessorEditor::refreshPresetList()
         }
         menu->addSubMenu (halcyon::params::modeNames[m], category);
     }
+
+    juce::PopupMenu realWorld;
+    for (int i = (int) halcyon::factoryPresets.size(); i < halcyon::numFactoryPresets; ++i)
+    {
+        realWorld.addItem (i + 1, halcyon::getFactoryPreset (i)->name);
+        presetOrder.push_back (i + 1);
+    }
+    menu->addSubMenu ("Real World", realWorld);
 
     if (! userPresets.isEmpty())
     {
@@ -624,6 +634,8 @@ void HalcyonAudioProcessorEditor::resized()
     knobsTab.setBounds (tabs.removeFromLeft (84));
     tabs.removeFromLeft (6);
     visualTab.setBounds (tabs.removeFromLeft (84));
+    speaker.box.setBounds (tabs.removeFromRight (130));
+    speaker.label.setBounds (tabs.removeFromRight (64).withTrimmedRight (8));
 
     if (dialog != nullptr)
         dialog->setCentrePosition (getLocalBounds().getCentre());

@@ -1,6 +1,7 @@
 #pragma once
 
-// Factory presets: ten per Mode, ordered from everyday to experimental.
+// Factory presets: ten per Mode, ordered from everyday to experimental, then
+// "Real World" presets that recreate everyday speakers and spaces.
 // Plain data with no JUCE dependency so the engine tests can render every one.
 
 #include "ReverbEngine.h"
@@ -26,6 +27,7 @@ constexpr auto K = Mode::Cathedral;
 constexpr auto Mod = Color::Modern;
 constexpr auto Vin = Color::Vintage;
 constexpr auto Drk = Color::Dark;
+constexpr auto Off = Speaker::Off;
 } // namespace detail
 
 inline constexpr int presetsPerMode = 10;
@@ -88,6 +90,35 @@ inline const std::array<FactoryPreset, 5 * presetsPerMode> factoryPresets {{
     { "Underwater",        { 0.65f,  40.0f, 10.0f, 0.85f, 0.85f, 4.00f, 1.00f,  1500.0f, 100.0f, 1.0f, detail::K, detail::Drk, false } },
     { "Dying Satellite",   { 0.75f, 150.0f, 20.0f, 1.00f, 0.80f, 2.00f, 0.80f,  3500.0f, 600.0f, 0.8f, detail::K, detail::Vin, true  } },
 }};
+
+inline const std::array<FactoryPreset, 6> realWorldPresets {{
+    //                     mix   pre    decay  size  diff  rate  depth  highcut  lowcut  width  mode       color        lofi   speaker
+    // Music out of a phone's tiny speaker, held up in a small room.
+    { "Cell Phone",        { 0.10f,   0.0f,  0.35f, 0.10f, 0.60f, 0.50f, 0.10f,  9000.0f, 150.0f, 0.6f, detail::R, detail::Mod, false, Speaker::CellPhone } },
+    // Standing in a glass phone booth: a tiny, hard, ringing box with no bass.
+    { "Phone Booth",       { 0.45f,   0.0f,  0.45f, 0.00f, 0.35f, 0.40f, 0.10f, 12000.0f, 220.0f, 0.4f, detail::R, detail::Mod, false, detail::Off } },
+    // A tube TV's little mono speaker across a living room, whine included.
+    { "90's CRT TV",       { 0.18f,   5.0f,  0.60f, 0.25f, 0.70f, 0.50f, 0.15f,  6000.0f, 120.0f, 0.8f, detail::R, detail::Vin, false, Speaker::CrtTv } },
+    // A cassette boom box with the bass boost on: warm, hissy, a little wobbly.
+    { "80's Boom Box",     { 0.15f,  10.0f,  0.90f, 0.40f, 0.70f, 0.50f, 0.30f,  7000.0f, 100.0f, 1.0f, detail::R, detail::Vin, false, Speaker::BoomBox } },
+    // The other end of a call: narrow band, phone-line codec, line hiss.
+    { "Land Line",         { 0.06f,   0.0f,  0.30f, 0.00f, 0.50f, 0.50f, 0.00f,  6000.0f, 200.0f, 0.5f, detail::R, detail::Mod, false, Speaker::Landline } },
+    // A cabinet's cranked, boxy speakers in a busy arcade.
+    { "90's Arcade",       { 0.25f,  15.0f,  1.20f, 0.55f, 0.75f, 0.60f, 0.25f,  6500.0f, 120.0f, 0.9f, detail::C, detail::Vin, false, Speaker::Arcade } },
+}};
 // clang-format on
+
+inline constexpr int numFactoryPresets = 5 * presetsPerMode + 6;
+
+// Factory presets in menu order: the per-Mode groups, then Real World.
+inline const FactoryPreset* getFactoryPreset (int index)
+{
+    if (index >= 0 && index < (int) factoryPresets.size())
+        return &factoryPresets[(size_t) index];
+    index -= (int) factoryPresets.size();
+    if (index >= 0 && index < (int) realWorldPresets.size())
+        return &realWorldPresets[(size_t) index];
+    return nullptr;
+}
 
 } // namespace halcyon

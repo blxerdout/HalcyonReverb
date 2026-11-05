@@ -362,10 +362,10 @@ int main (int argc, char** argv)
             noise.r.push_back (dist (rng));
         }
 
-        for (size_t i = 0; i < factoryPresets.size(); ++i)
+        for (int i = 0; i < numFactoryPresets; ++i)
         {
-            const auto& preset = factoryPresets[i];
-            if ((int) preset.params.mode != (int) i / presetsPerMode)
+            const auto& preset = *getFactoryPreset (i);
+            if (i < 5 * presetsPerMode && (int) preset.params.mode != i / presetsPerMode)
                 ++misfiled;
 
             float peak = 0.0f;
@@ -376,7 +376,90 @@ int main (int argc, char** argv)
             }
         }
         check (misfiled == 0, "each preset sits in its Mode's group of ten");
-        check (unstable == 0, std::to_string (factoryPresets.size()) + " presets finite and bounded");
+        check (unstable == 0, std::to_string (numFactoryPresets) + " presets finite and bounded");
+        check (getFactoryPreset (numFactoryPresets - 1) != nullptr && getFactoryPreset (numFactoryPresets) == nullptr,
+               "preset count matches the tables");
+    }
+
+    std::printf ("\nSpeakers (dry signal only)\n");
+    {
+        // Level of a sine after the speaker, relative to the input, in dB.
+        auto sineGain = [] (Speaker sp, float hz)
+        {
+            ReverbParams p;
+            p.mix = 0.0f;
+            p.speaker = sp;
+            Stereo sine;
+            for (int i = 0; i < 48000; ++i)
+            {
+                const float v = 0.05f * std::sin (6.2831853f * hz * (float) i / 48000.0f);
+                sine.l.push_back (v);
+                sine.r.push_back (v);
+            }
+            const Stereo out = render (p, sine, 0);
+            double in = 0.0, outE = 0.0;
+            for (size_t i = 9600; i < sine.l.size(); ++i)
+            {
+                in += (double) sine.l[i] * sine.l[i];
+                outE += (double) out.l[i] * out.l[i];
+            }
+            return 10.0 * std::log10 (outE / in + 1e-30);
+        };
+
+        const char* names[] { "Off", "Cell Phone", "Landline", "CRT TV", "Boom Box", "Arcade" };
+        std::printf ("  %-11s %7s %7s %7s\n", "speaker", "120 Hz", "1 kHz", "5 kHz");
+        double gain[numSpeakers][3] {};
+        for (int s = 0; s < numSpeakers; ++s)
+        {
+            gain[s][0] = sineGain ((Speaker) s, 120.0f);
+            gain[s][1] = sineGain ((Speaker) s, 1000.0f);
+            gain[s][2] = sineGain ((Speaker) s, 5000.0f);
+            std::printf ("  %-11s %7.1f %7.1f %7.1f\n", names[s], gain[s][0], gain[s][1], gain[s][2]);
+
+            ReverbParams p;
+            p.speaker = (Speaker) s;
+            Stereo silence;
+            silence.l.assign (48000, 0.0f);
+            silence.r.assign (48000, 0.0f);
+            float peak = 0.0f;
+            check (allFinite (render (p, silence, 0), peak) && peak == 0.0f,
+                   std::string (names[s]) + ": silence in, silence out (no idle hiss)");
+            check (std::abs (gain[s][1]) < 9.0, std::string (names[s]) + ": 1 kHz level in range");
+        }
+
+        const auto cell = (int) Speaker::CellPhone, line = (int) Speaker::Landline, box = (int) Speaker::BoomBox;
+        check (gain[0][0] == 0.0 && gain[0][1] == 0.0 && gain[0][2] == 0.0, "Off passes audio untouched");
+        check (gain[cell][0] < gain[cell][1] - 30.0, "Cell Phone has no bass");
+        check (gain[line][0] < gain[line][1] - 25.0 && gain[line][2] < gain[line][1] - 20.0,
+               "Landline is band-limited to the telephone band");
+        check (gain[box][0] > gain[box][1], "Boom Box keeps (boosts) the bass");
+
+        // Switching models mid-signal fades through, with no jump.
+        ReverbParams p;
+        p.mix = 0.0f;
+        ReverbEngine engine;
+        engine.prepare (sampleRate);
+        engine.setParams (p);
+        engine.reset();
+        float worstStep = 0.0f, last = 0.0f;
+        for (int block = 0; block < 400; ++block)
+        {
+            if (block % 40 == 0)
+            {
+                p.speaker = (Speaker) ((block / 40) % numSpeakers);
+                engine.setParams (p);
+            }
+            std::array<float, 64> l {}, r {};
+            for (size_t i = 0; i < l.size(); ++i)
+                l[i] = r[i] = 0.3f * std::sin (6.2831853f * 220.0f * (float) (block * 64 + (int) i) / 48000.0f);
+            engine.process (l.data(), r.data(), (int) l.size());
+            for (float v : l)
+            {
+                worstStep = std::max (worstStep, std::abs (v - last));
+                last = v;
+            }
+        }
+        check (worstStep < 0.1f, "switching speakers doesn't click");
     }
 
     std::printf ("\nOnset detector (drives the Visual tab playhead)\n");

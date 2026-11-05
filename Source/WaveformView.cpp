@@ -24,7 +24,7 @@ bool sameParams (const halcyon::ReverbParams& a, const halcyon::ReverbParams& b)
            && exactlyEqual (a.diffusion, b.diffusion) && exactlyEqual (a.modRateHz, b.modRateHz)
            && exactlyEqual (a.modDepth, b.modDepth) && exactlyEqual (a.highCutHz, b.highCutHz)
            && exactlyEqual (a.lowCutHz, b.lowCutHz) && exactlyEqual (a.width, b.width) && a.mode == b.mode
-           && a.color == b.color && a.lofi == b.lofi;
+           && a.color == b.color && a.lofi == b.lofi && a.speaker == b.speaker;
 }
 
 float toneFromHighCut (float hz) { return std::log (hz / 1000.0f) / std::log (20.0f); }
@@ -462,6 +462,7 @@ void WaveformView::paint (juce::Graphics& g)
 
     g.setColour (colours::cyan.withAlpha (0.8f));
     g.drawText (p::modeNames[(int) shown.mode].toUpperCase() + " // " + p::colorNames[(int) shown.color].toUpperCase()
-                    + (shown.lofi ? " // LOFI" : ""),
+                    + (shown.lofi ? " // LOFI" : "")
+                    + (shown.speaker != halcyon::Speaker::Off ? " // " + p::speakerNames[(int) shown.speaker].toUpperCase() : ""),
                 header, juce::Justification::centredRight);
 }

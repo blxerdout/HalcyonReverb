@@ -19,9 +19,12 @@ inline constexpr const char* width = "width";
 inline constexpr const char* mode = "mode";
 inline constexpr const char* color = "color";
 inline constexpr const char* lofi = "lofi";
+inline constexpr const char* speaker = "speaker";
 
 inline const juce::StringArray modeNames { "Plate", "Hall", "Room", "Chamber", "Cathedral" };
 inline const juce::StringArray colorNames { "Modern", "Vintage", "Dark" };
+// Order matches halcyon::Speaker.
+inline const juce::StringArray speakerNames { "Off", "Cell Phone", "Landline", "CRT TV", "Boom Box", "Arcade" };
 
 juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 

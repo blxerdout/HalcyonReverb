@@ -6,7 +6,8 @@ Inspired by the character of Valhalla VintageVerb, but none of Valhalla's code, 
 ## Layout
 
 - `Source/dsp/ReverbEngine.*`: the DSP, plain C++17 with **no JUCE dependency** (keep it that way so it stays testable offline)
-- `Source/dsp/FactoryPresets.h`: 50 factory presets (10 per Mode, basic to experimental), JUCE-free. Each group of ten must match `modeNames` order; the tests check this
+- `Source/dsp/FactoryPresets.h`: 50 factory presets (10 per Mode, basic to experimental) plus 6 `realWorldPresets` (menu IDs 51-56, "Real World" submenu), JUCE-free; index both through `getFactoryPreset`. Each group of ten must match `modeNames` order; the tests check this
+- `Source/dsp/SpeakerStage.h`: JUCE-free output stage (`speaker` parameter) that runs on the mixed output: band limits, cabinet peaks, saturation, optional codec/whine/wow. Each model's `gain` is level-matched to about -1 dB on pink noise; hiss follows an envelope so silence stays silent. `speakerNames` order must match `halcyon::Speaker`
 - `Source/Parameters.*`: APVTS layout. Parameter IDs are saved in DAW sessions, so never rename them
 - `Source/PresetManager.*`: factory/user preset loading; user presets are `.halcyonpreset` XML in `~/Library/Audio/Presets/creativespxce/Reblxerd` (old `Halcyon Reverb` folder is moved there on first use). Current preset name is the `presetName` property on the APVTS state
 - `Source/PluginProcessor.*`, `Source/PluginEditor.*`: JUCE wrapper and UI. Cyberpunk theme (`NeonLookAndFeel`); `NeonKnob` glows while turned. Editor is resizable (corner grip, 640x530 to 1920x1440); size is the `editorWidth`/`editorHeight` properties on the APVTS state, read before `setResizeLimits` (which resizes and would overwrite them)

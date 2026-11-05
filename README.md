@@ -21,6 +21,7 @@ modes with distinct character, plus a colour control that shapes bandwidth, moti
 | Mod Rate / Mod Depth | Delay-line modulation for chorus-like movement and to break up metallic ringing |
 | Width | Stereo width of the wet signal |
 | **Lofi** | Turns the wet signal into a filtered, fuzzy 8-bit version of the current reverb (band-pass, fuzz, ~11 kHz sample-and-hold, 8-bit quantise). Crossfades in, so it can be automated |
+| **Speaker** | Plays the whole output, dry and wet, through a real-world speaker: **Cell Phone**, **Landline** (telephone band, 8 kHz phone-line codec, line hiss), **CRT TV** (boxy mono speaker, 15.7 kHz whine), **Boom Box** (bass boost, cassette hiss, wow and flutter) or **Arcade** (cranked, boxy cabinet speakers). Levels are matched so switching doesn't jump in volume, and hiss only plays while there's sound |
 
 Drag the grip in the bottom-right corner to resize the window (640×530 up to 1920×1440). The knobs
 and the waveform grow with it, and the size is saved with your session.
@@ -48,8 +49,9 @@ reverb dies away. A held note or steady pad starts it once rather than continuou
 
 ## Presets
 
-The preset bar holds 50 factory presets, ten per Mode, running from everyday settings
-to experimental ones (lofi, extreme modulation, metallic resonators, frozen tails).
+The preset bar holds 56 factory presets: ten per Mode, running from everyday settings
+to experimental ones (lofi, extreme modulation, metallic resonators, frozen tails), plus a
+**Real World** group: Cell Phone, Phone Booth, 90's CRT TV, 80's Boom Box, Land Line and 90's Arcade.
 The arrows step through every preset; **Save** stores the current settings as a user preset and
 **Delete** removes the selected user preset. User presets are XML files in
 `~/Library/Audio/Presets/creativespxce/Reblxerd`, so they can be backed up or shared.

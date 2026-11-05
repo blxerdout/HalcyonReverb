@@ -97,7 +97,7 @@ private:
     HalcyonAudioProcessor& audioProcessor;
     NeonLookAndFeel lookAndFeel;
     std::array<Knob, 10> knobs;
-    Choice mode, color;
+    Choice mode, color, speaker;
 
     juce::ComboBox presetBox;
     juce::TextButton prevButton { "<" }, nextButton { ">" }, saveButton { "SAVE" }, deleteButton { "DELETE" };

@@ -38,10 +38,11 @@ juce::Array<juce::File> PresetManager::getUserPresets() const
 
 void PresetManager::loadFactory (int index)
 {
-    if (! juce::isPositiveAndBelow (index, (int) factoryPresets.size()))
+    const auto* found = getFactoryPreset (index);
+    if (found == nullptr)
         return;
 
-    const auto& preset = factoryPresets[(size_t) index];
+    const auto& preset = *found;
     const auto& r = preset.params;
 
     setParameter (params::mix, r.mix);
@@ -57,6 +58,7 @@ void PresetManager::loadFactory (int index)
     setParameter (params::mode, (float) r.mode);
     setParameter (params::color, (float) r.color);
     setParameter (params::lofi, r.lofi ? 1.0f : 0.0f);
+    setParameter (params::speaker, (float) r.speaker);
 
     setCurrentPresetName (preset.name);
 }

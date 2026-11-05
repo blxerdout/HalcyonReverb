@@ -13,12 +13,16 @@
 // Each Mode supplies its own delay-length set, density and reflection level;
 // each Color shapes bandwidth, modulation and in-loop saturation. Lofi runs
 // the wet signal through a band-pass, fuzz, sample-and-hold and 8-bit
-// quantiser, crossfaded in so toggling it doesn't click.
+// quantiser, crossfaded in so toggling it doesn't click. Finally Speaker plays
+// the mixed output, dry and wet, through a phone, TV or boom box model
+// (SpeakerStage.h).
 
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <vector>
+
+#include "SpeakerStage.h"
 
 namespace halcyon
 {
@@ -54,6 +58,7 @@ struct ReverbParams
     Mode mode = Mode::Hall;
     Color color = Color::Modern;
     bool lofi = false;
+    Speaker speaker = Speaker::Off; // applied to the whole output, dry and wet
 };
 
 namespace detail
@@ -254,6 +259,7 @@ private:
     std::array<detail::Allpass, numLines> tankAp;
     std::array<detail::OnePoleLowpass, numLines> damping;
     detail::LofiStage lofiL, lofiR;
+    detail::SpeakerStage speakerStage;
 };
 
 } // namespace halcyon

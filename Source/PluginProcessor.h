@@ -76,6 +76,7 @@ private:
         std::atomic<float>* mode = nullptr;
         std::atomic<float>* color = nullptr;
         std::atomic<float>* lofi = nullptr;
+        std::atomic<float>* speaker = nullptr;
     } raw;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HalcyonAudioProcessor)
