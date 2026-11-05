@@ -15,7 +15,7 @@ Inspired by the character of Valhalla VintageVerb, but none of Valhalla's code, 
 - `Source/Theme.h`: shared colours and drawing helpers
 - `docs/screenshot*.png`: rendered from the editor offscreen (no screen-recording permission here); regenerate after UI changes
 - `packaging/`: `mac/build-dmg.sh` (pkg in a dmg; bundles marked non-relocatable, ad-hoc sealed unless `DEVELOPER_ID_*` is set) and `windows/Reblxerd.iss` (Inno Setup). `.github/workflows/build.yml` builds both on every push and makes a pre-release on `v*` tags. Windows can't be built on this Mac; CI is the only Windows build. Title font falls back to Bahnschrift on Windows
-- `tests/EngineTests.cpp`: JUCE-free checks (stability, RT60 vs Decay, L/R correlation, CPU). Pass a folder arg to write IR WAVs
+- `tests/EngineTests.cpp`: JUCE-free checks (stability, RT60 vs Decay, Size changes build-up with no gap before the tail, L/R correlation, CPU). Pass a folder arg to write IR WAVs
 
 ## Build
 

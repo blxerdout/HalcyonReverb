@@ -201,6 +201,62 @@ int main (int argc, char** argv)
         check (rt > target * 0.75 && rt < target * 1.25, label);
     }
 
+    std::printf ("\nSize reshapes the room (decay 2.0 s)\n");
+    std::printf ("  %-10s %22s %22s %10s\n", "mode", "build-up 0/50/100%", "RT60 0/100%", "worst gap");
+    for (int m = 0; m < 5; ++m)
+    {
+        double centre[3] {}, rt[3] {}, worstGap = 0.0;
+        for (int s = 0; s < 3; ++s)
+        {
+            ReverbParams p;
+            p.mix = 1.0f;
+            p.decaySeconds = 2.0f;
+            p.preDelayMs = 0.0f;
+            p.modDepth = 0.0f;
+            p.mode = (Mode) m;
+            p.size = 0.5f * (float) s;
+            const Stereo ir = render (p, impulse(), (int) (6 * sampleRate));
+            rt[s] = measureRT60 (ir);
+
+            // Centre time of the first 500 ms: when the room has "filled in".
+            double sum = 0.0, weighted = 0.0;
+            for (size_t i = 0; i < (size_t) (0.5 * sampleRate); ++i)
+            {
+                const double e = (double) ir.l[i] * ir.l[i] + (double) ir.r[i] * ir.r[i];
+                sum += e;
+                weighted += e * (double) i;
+            }
+            centre[s] = weighted / sum / sampleRate * 1000.0;
+
+            // In 20 ms windows (5 ms apart), the deepest drop below what came before,
+            // up to the peak. A big one is a silent hole between the reflections and
+            // the tail; shorter gaps, like those between single reflections, aren't heard.
+            std::vector<double> bins;
+            for (size_t b = 0; b + 4 <= (size_t) (0.5 * sampleRate) / 240; ++b)
+            {
+                double e = 0.0;
+                for (size_t i = b * 240; i < (b + 4) * 240; ++i)
+                    e += (double) ir.l[i] * ir.l[i] + (double) ir.r[i] * ir.r[i];
+                bins.push_back (10.0 * std::log10 (e + 1e-30));
+            }
+            const auto peakBin = std::max_element (bins.begin(), bins.end());
+            double runningMax = -300.0;
+            for (auto it = bins.begin(); it != peakBin; ++it)
+            {
+                if (runningMax > *peakBin - 20.0)
+                    worstGap = std::max (worstGap, runningMax - *it);
+                runningMax = std::max (runningMax, *it);
+            }
+        }
+
+        std::printf ("  %-10s %6.0f/%4.0f/%4.0f ms %13.2fs/%.2fs %8.1f dB\n", modeName ((Mode) m),
+                     centre[0], centre[1], centre[2], rt[0], rt[2], worstGap);
+        check (centre[0] < centre[1] && centre[1] < centre[2] && centre[2] > 1.4 * centre[0],
+               "bigger size fills in later");
+        check (rt[0] > 1.2 && rt[0] < 2.6 && rt[2] > 1.2 && rt[2] < 2.6, "RT60 still follows Decay at both ends");
+        check (worstGap < 8.0, "no hole between reflections and tail");
+    }
+
     std::printf ("\nWorst-case stability (30 s decay, max diffusion and modulation, loud noise)\n");
     for (int c = 0; c < 3; ++c)
     {

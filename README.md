@@ -13,7 +13,7 @@ modes with distinct character, plus a colour control that shapes bandwidth, moti
 | **Mode** | Plate, Hall, Room, Chamber, Cathedral. Each mode has its own delay network, density and early reflections |
 | **Color** | Modern (full bandwidth, clean), Vintage (band-limited, more wobble, slight saturation), Dark (soft, woolly) |
 | Pre-Delay | Gap before the reverb starts, 0 to 500 ms |
-| Size | Scales the space; also changes the early reflection spacing |
+| Size | How big the space is: from a tight, instant box to a huge room that swells in slowly. Stretches the reflections, diffusion and tank (0.3x to 2.5x); tail length stays set by Decay |
 | Decay | RT60, 0.2 to 30 s |
 | Diffusion | How quickly transients smear into a smooth wash |
 | Mix | Dry/wet. Use 100% when the plugin sits on a send/return track |

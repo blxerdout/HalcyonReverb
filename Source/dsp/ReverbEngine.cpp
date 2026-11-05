@@ -69,12 +69,34 @@ constexpr std::array<float, ReverbEngine::numLines> outSignL { 1, -1, -1, 1, 1, 
 constexpr std::array<float, ReverbEngine::numLines> outSignR { 1, -1, 1, -1, -1, 1, -1, 1 };
 constexpr std::array<float, ReverbEngine::numLines> inSign { 1, -1, 1, 1, -1, 1, -1, -1 };
 
-constexpr float maxSizeScale = 1.65f;
+// Extra outputs partway along each line, so the tail builds continuously instead
+// of arriving all at once after the shortest line, which leaves an audible gap
+// after the early reflections in big rooms. Each uses its own pair of Hadamard
+// rows to keep left and right decorrelated.
+constexpr std::array<float, 2> midTapAt { 0.21f, 0.53f };
+constexpr std::array<std::array<float, ReverbEngine::numLines>, 2> midSignL {{ { 1, 1, -1, -1, 1, 1, -1, -1 },
+                                                                              { 1, 1, 1, 1, -1, -1, -1, -1 } }};
+constexpr std::array<std::array<float, ReverbEngine::numLines>, 2> midSignR {{ { 1, -1, -1, 1, -1, 1, 1, -1 },
+                                                                              { 1, 1, -1, -1, -1, -1, 1, 1 } }};
+constexpr float midTapGain = 0.5f;
+constexpr float lateGain = 0.35355339f / 1.2247449f; // 1 / sqrt (8), less the energy the mid taps add
+
+constexpr float minSizeScale = 0.3f, maxSizeScale = 2.5f;
 constexpr float maxModSamplesAt48k = 12.0f * 1.6f * 1.6f;
 constexpr float outputGain = 0.5f;
 constexpr int controlInterval = 32;
 
-float sizeToScale (float size) { return 0.35f + 1.3f * std::clamp (size, 0.0f, 1.0f); }
+// Size 0..1 -> how much every delay in the room is stretched. Exponential, since
+// we hear room size as a ratio; 0.5 stays at 1x so mid-size presets are unchanged.
+float sizeToScale (float size)
+{
+    const float s = std::clamp (size, 0.0f, 1.0f) - 0.5f;
+    return std::pow (s < 0.0f ? 1.0f / minSizeScale : maxSizeScale, 2.0f * s);
+}
+
+// The input diffusers follow the room, but less than proportionally: fully
+// scaled they turn into audible slapback at large sizes.
+float diffuserScale (float scale) { return std::pow (scale, 0.7f); }
 
 void hadamard8 (float* x)
 {
@@ -108,14 +130,16 @@ void ReverbEngine::prepare (double sampleRate)
 
     preDelayL.prepare ((int) (500.0f * msToSamples) + 8);
     preDelayR.prepare ((int) (500.0f * msToSamples) + 8);
-    erLineL.prepare ((int) (60.0f * 1.6f * 1.5f * msToSamples) + 8);
-    erLineR.prepare ((int) (60.0f * 1.6f * 1.5f * msToSamples) + 8);
+    erLineL.prepare ((int) (60.0f * 1.6f * maxSizeScale * msToSamples) + 8);
+    erLineR.prepare ((int) (60.0f * 1.6f * maxSizeScale * msToSamples) + 8);
 
     for (int i = 0; i < numDiffusers; ++i)
     {
-        diffuserLen[(size_t) i] = diffuserMs[(size_t) i] * msToSamples;
-        diffL[(size_t) i].prepare ((int) diffuserLen[(size_t) i] + 8);
-        diffR[(size_t) i].prepare ((int) diffuserLen[(size_t) i] + 8);
+        // The right channel runs 7% longer.
+        const int maxLen = (int) (diffuserMs[(size_t) i] * 1.071f * diffuserScale (maxSizeScale) * msToSamples) + 8;
+        diffL[(size_t) i].prepare (maxLen);
+        diffR[(size_t) i].prepare (maxLen);
+        diffuserLenTarget[(size_t) i] = diffuserMs[(size_t) i] * msToSamples; // until setParams
     }
 
     for (int i = 0; i < numLines; ++i)
@@ -151,6 +175,7 @@ void ReverbEngine::reset()
     // Jump straight to targets so a fresh instance doesn't glide in.
     lineLen = lineLenTarget;
     apLen = apLenTarget;
+    diffuserLen = diffuserLenTarget;
     erTapL = erTapLTarget;
     erTapR = erTapRTarget;
     preDelay = preDelayTarget;
@@ -169,7 +194,7 @@ void ReverbEngine::setParams (const ReverbParams& p)
     const auto& color = colorTable[(size_t) p.color];
     const float msToSamples = fs / 1000.0f;
     const float scale = sizeToScale (p.size);
-    const float erScale = mode.erScale * (0.5f + std::clamp (p.size, 0.0f, 1.0f));
+    const float erScale = mode.erScale * scale;
 
     for (size_t i = 0; i < (size_t) numLines; ++i)
     {
@@ -177,6 +202,9 @@ void ReverbEngine::setParams (const ReverbParams& p)
         apLenTarget[i] = std::max (2.0f, mode.apMs[i] * scale * msToSamples);
         lfoInc[i] = p.modRateHz * (1.0f + 0.07f * (float) i) / fs;
     }
+
+    for (size_t i = 0; i < (size_t) numDiffusers; ++i)
+        diffuserLenTarget[i] = std::max (2.0f, diffuserMs[i] * diffuserScale (scale) * msToSamples);
 
     for (size_t i = 0; i < (size_t) numTaps; ++i)
     {
@@ -234,6 +262,8 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
             glide (lineLen[i], lineLenTarget[i]);
             glide (apLen[i], apLenTarget[i]);
         }
+        for (size_t i = 0; i < (size_t) numDiffusers; ++i)
+            glide (diffuserLen[i], diffuserLenTarget[i]);
         for (size_t i = 0; i < (size_t) numTaps; ++i)
         {
             glide (erTapL[i], erTapLTarget[i]);
@@ -293,9 +323,19 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
             fb[i] = saturate (y * loopGain[i], drive);
         }
 
+        float lateL = 0.0f, lateR = 0.0f;
+        for (size_t t = 0; t < midTapAt.size(); ++t)
+        {
+            for (size_t i = 0; i < (size_t) numLines; ++i)
+            {
+                const float y = midTapGain * lines[i].readLinear (std::max (1.0f, midTapAt[t] * lineLen[i]));
+                lateL += midSignL[t][i] * y;
+                lateR += midSignR[t][i] * y;
+            }
+        }
+
         hadamard8 (fb.data());
 
-        float lateL = 0.0f, lateR = 0.0f;
         for (size_t i = 0; i < (size_t) numLines; ++i)
         {
             const float inject = inSign[i] * (i < (size_t) numLines / 2 ? inL : inR);
@@ -304,8 +344,8 @@ void ReverbEngine::process (float* left, float* right, int numSamples)
             lateR += outSignR[i] * tap[i];
         }
 
-        float wetL = outputGain * (lateL * 0.35355339f + erLevel * erL);
-        float wetR = outputGain * (lateR * 0.35355339f + erLevel * erR);
+        float wetL = outputGain * (lateL * lateGain + erLevel * erL);
+        float wetR = outputGain * (lateR * lateGain + erLevel * erR);
 
         if (lofiAmount > 1.0e-4f)
         {

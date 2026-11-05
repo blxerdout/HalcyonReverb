@@ -243,7 +243,7 @@ private:
     float drive = 0.0f;
     std::array<float, numLines> loopGain {};
     std::array<float, numLines> lfoPhase {}, lfoInc {};
-    std::array<float, numDiffusers> diffuserLen {};
+    std::array<float, numDiffusers> diffuserLen {}, diffuserLenTarget {};
 
     detail::DelayLine preDelayL, preDelayR;
     detail::DelayLine erLineL, erLineR;
